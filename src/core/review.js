@@ -288,7 +288,17 @@ function buildStyleMap(zip) {
       }
     }
   }
-  return { stylesDoc, nameToId, styleRpr };
+  // Extract docDefaults
+  let docDefaultsRpr = null;
+  let docDefaultsPpr = null;
+  const docDefaultsEl = stylesDoc.getElementsByTagNameNS(W_NS, 'docDefaults')[0];
+  if (docDefaultsEl) {
+    const rPrDefault = docDefaultsEl.getElementsByTagNameNS(W_NS, 'rPrDefault')[0];
+    if (rPrDefault) docDefaultsRpr = rPrDefault.getElementsByTagNameNS(W_NS, 'rPr')[0] || null;
+    const pPrDefault = docDefaultsEl.getElementsByTagNameNS(W_NS, 'pPrDefault')[0];
+    if (pPrDefault) docDefaultsPpr = pPrDefault.getElementsByTagNameNS(W_NS, 'pPr')[0] || null;
+  }
+  return { stylesDoc, nameToId, styleRpr, docDefaultsRpr, docDefaultsPpr };
 }
 
 function paintRuns(doc, pEl, styleId, styleRpr) {

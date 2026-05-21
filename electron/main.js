@@ -79,11 +79,11 @@ ipcMain.handle('writemaster:extract-master', async (_, { filePath }) => {
     const { extractBlocks, extractStylesSummary } = require('../src/core/extract');
     const { loadDocx, resolveMasterPath } = require('../src/core/review');
     const resolved = resolveMasterPath(filePath);
-    const { blocks } = extractBlocks(resolved);
+    const { blocks, documentSectPr, headersFooters } = extractBlocks(resolved);
     const styleList = extractStylesSummary(loadDocx(resolved));
-    return { ok: true, blocks, styleList };
+    return { ok: true, blocks, styleList, documentSectPr, headersFooters };
   } catch (error) {
-    return { ok: false, error: error.message, blocks: [], styleList: [] };
+    return { ok: false, error: error.message, blocks: [], styleList: [], documentSectPr: null, headersFooters: null };
   }
 });
 
@@ -224,6 +224,28 @@ ipcMain.handle('writemaster:run-with-profile', async (_, payload) => {
     return { ok: true, outputPath };
   } catch (error) {
     return { ok: false, error: error.stack || error.message };
+  }
+});
+
+ipcMain.handle('writemaster:save-temp-styles', async (_, { styles }) => {
+  try {
+    const dir = path.join(app.getPath('userData'), 'temp-styles');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'saved.json'), JSON.stringify(styles, null, 2));
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('writemaster:load-temp-styles', async () => {
+  try {
+    const filePath = path.join(app.getPath('userData'), 'temp-styles', 'saved.json');
+    if (!fs.existsSync(filePath)) return { ok: true, styles: [] };
+    const raw = fs.readFileSync(filePath, 'utf8');
+    return { ok: true, styles: JSON.parse(raw) };
+  } catch (error) {
+    return { ok: false, error: error.message, styles: [] };
   }
 });
 

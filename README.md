@@ -1,12 +1,17 @@
 <p align="center">
   <h1 align="center">WriteMaster</h1>
-  <p align="center"><strong>把 Markdown 或 DOCX 转成指定母版风格的 DOCX</strong> — 统一 OOXML 规则后处理，支持 CLI / 单文件 / Electron 桌面 / Rust 四种入口。</p>
+  <p align="center"><strong>把 Markdown 或 DOCX 转成指定母版风格的 DOCX</strong> — 统一 OOXML 规则后处理，支持 CLI / 单文件 / Electron 桌面三种入口。</p>
 </p>
 
 <p align="center">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg" />
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" />
   <img alt="Node" src="https://img.shields.io/badge/node-%3E%3D18-brightgreen" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.4.0-blue" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/Ysoseri1224/Fully-Auto-Docx-Format-Process">GitHub</a>
 </p>
 
 ---
@@ -40,11 +45,13 @@ node src/cli.js --md ./test/your-file.md --master-id review-master
 | **多母版支持** | 内置 `review-master`（教材）和 `chapter10-monograph`（专著），支持自定义外部母版 |
 | **智能段落分类** | 自动识别标题层级、正文、图题/表题、代码块、提示说明块 |
 | **表格恢复** | 从 Markdown 源文件重建丢失的表格结构 |
-| **编号系统** | 项目目标组编号、(x) 括号编号、①② 圈号编号自动管理 |
+| **编号系统** | 完整 numbering.xml 解析：decimal、括号编号、圈号编号、bullet、中文计数，支持样式继承编号 |
+| **docDefaults 字体回退** | 解析 w:docDefaults 提供文档级默认字体/字号，确保所有段落有 effective 值 |
+| **图片提取** | 支持 w:drawing 和 VML w:pict 两种嵌入方式，保留图片在渲染预览中 |
 | **模板提取工作台** | Electron 内可视化提取母版结构，右键标注语义角色，自动聚类临时样式 |
 | **Profile 配置** | 将样式映射保存为可复用配置，支持导入/导出 JSON |
 | **单文件 Bundle** | 内嵌母版 base64 的独立 `.cjs` 文件，无需 `node_modules` |
-| **Electron 桌面** | 三视图 Workbench（应用任务 / 模板提取 / Profile 配置），便携版 EXE |
+| **Electron 桌面** | 三视图 Workbench（应用任务 / 模板提取 / Profile 配置），Word 风格蓝白 UI，便携版 EXE |
 | **Rust CLI 包装** | 零依赖的薄包装层，调用 Node 核心 |
 
 ---

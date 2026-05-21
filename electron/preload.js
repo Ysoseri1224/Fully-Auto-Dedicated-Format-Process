@@ -43,4 +43,10 @@ contextBridge.exposeInMainWorld('writemaster', {
   runWithProfile(payload) {
     return ipcRenderer.invoke('writemaster:run-with-profile', payload);
   },
+  saveTempStyles(styles) {
+    return ipcRenderer.invoke('writemaster:save-temp-styles', { styles });
+  },
+  loadTempStyles() {
+    return ipcRenderer.invoke('writemaster:load-temp-styles');
+  },
 });

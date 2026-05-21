@@ -6,29 +6,27 @@
     <title>WriteMaster Workbench</title>
     <style>
       :root {
-        --bg: #f3efe7;
-        --panel: #fffaf2;
+        --bg: #f0f4f8;
+        --panel: #ffffff;
         --panel-2: #ffffff;
-        --line: #ddd2bf;
-        --ink: #1e293b;
-        --muted: #6b7280;
-        --accent: #9a4d2f;
-        --accent-soft: #f3e5d7;
-        --highlight: #d8e4ff;
-        --blue-soft: #eef1ff;
-        --blue-line: #c8d2ff;
-        --success: #166534;
-        --error: #991b1b;
+        --line: #d4dbe4;
+        --ink: #1a2332;
+        --muted: #5f6d7e;
+        --accent: #2b5797;
+        --accent-soft: #e8f0fe;
+        --highlight: #cfe2ff;
+        --blue-soft: #edf2fc;
+        --blue-line: #b8cfe8;
+        --success: #1a7f37;
+        --error: #c42b1c;
       }
 
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: "Noto Serif SC", "Source Han Serif SC", serif;
+        font-family: "Segoe UI", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
         color: var(--ink);
-        background:
-          radial-gradient(circle at top left, #fff7e8 0, transparent 24%),
-          linear-gradient(180deg, #faf6ef 0%, var(--bg) 100%);
+        background: linear-gradient(135deg, #f5f8fc 0%, var(--bg) 100%);
       }
       button, input, select, textarea { font: inherit; }
       .app {
@@ -39,115 +37,127 @@
       .sidebar, .main, .inspector { min-height: 0; }
       .sidebar {
         border-right: 1px solid var(--line);
-        background: rgba(255, 250, 242, 0.92);
+        background: #f8fafc;
         padding: 18px 16px;
         display: flex;
         flex-direction: column;
         gap: 18px;
       }
-      .brand { font-size: 28px; font-weight: 700; letter-spacing: 0.02em; }
+      .brand { font-size: 22px; font-weight: 700; letter-spacing: 0.02em; display: flex; align-items: center; gap: 10px; }
+      .brand img { width: 32px; height: 32px; border-radius: 6px; }
       .action {
-        border: 1px solid #cfc3b1;
+        border: 1px solid var(--blue-line);
         background: var(--accent-soft);
         color: var(--accent);
-        border-radius: 18px;
-        padding: 16px 18px;
-        font-size: 20px;
+        border-radius: 8px;
+        padding: 14px 16px;
+        font-size: 15px;
         font-weight: 600;
         text-align: left;
         cursor: pointer;
+        transition: background 0.15s, box-shadow 0.15s;
       }
-      .nav, .cards, .config-list, .style-list, .preset-list { display: flex; flex-direction: column; gap: 10px; }
+      .action:hover { background: #dbe8fd; box-shadow: 0 2px 8px rgba(43,87,151,0.1); }
+      .nav, .cards, .config-list, .style-list, .preset-list { display: flex; flex-direction: column; gap: 6px; }
       .nav-item, .card, .config-item, .style-item, .preset-item {
         background: var(--panel);
         border: 1px solid var(--line);
-        border-radius: 16px;
-        padding: 14px 16px;
+        border-radius: 8px;
+        padding: 12px 14px;
         cursor: pointer;
+        transition: background 0.12s, border-color 0.12s;
       }
+      .nav-item:hover, .card:hover { background: var(--blue-soft); }
       .nav-item.active, .card.active, .config-item.active, .preset-item.active, .style-item.active {
-        background: var(--blue-soft);
-        border-color: var(--blue-line);
+        background: var(--accent-soft);
+        border-color: var(--accent);
       }
-      .nav-title { font-size: 16px; font-weight: 600; }
+      .nav-title { font-size: 14px; font-weight: 600; }
       .nav-sub, .card-sub, .config-meta, .style-meta, .preset-meta, .muted {
-        margin-top: 4px;
+        margin-top: 3px;
         color: var(--muted);
-        font-size: 13px;
+        font-size: 12px;
       }
       .section-title {
-        font-size: 14px;
+        font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        color: #7c6958;
+        color: var(--muted);
       }
-      .card-title, .config-name, .style-name, .preset-name { font-size: 15px; font-weight: 700; }
+      .card-title, .config-name, .style-name, .preset-name { font-size: 14px; font-weight: 600; }
       .spacer { flex: 1; }
-      .sidebar-footer { display: flex; gap: 10px; }
+      .sidebar-footer { display: flex; gap: 8px; }
       .icon-btn {
-        width: 46px;
-        height: 46px;
-        border-radius: 14px;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
         border: 1px solid var(--line);
         background: var(--panel);
+        cursor: pointer;
+        transition: background 0.12s;
       }
+      .icon-btn:hover { background: var(--blue-soft); }
       .main {
         display: grid;
         grid-template-rows: auto auto 1fr auto;
-        background: #fbf9f5;
+        background: #f5f7fa;
       }
       .toolbar {
         display: flex;
         align-items: center;
-        gap: 14px;
-        padding: 16px 20px;
+        gap: 12px;
+        padding: 10px 20px;
         border-bottom: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.72);
-        backdrop-filter: blur(8px);
+        background: #ffffff;
       }
-      .back { font-size: 26px; }
-      .doc-title { font-size: 18px; font-weight: 700; }
+      .back { font-size: 22px; color: var(--accent); }
+      .doc-title { font-size: 16px; font-weight: 600; }
       .tag {
         border: 1px solid var(--line);
-        border-radius: 999px;
-        padding: 6px 12px;
-        font-size: 13px;
-        background: white;
+        border-radius: 4px;
+        padding: 4px 10px;
+        font-size: 12px;
+        background: var(--blue-soft);
+        color: var(--accent);
       }
       .tabbar {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 12px 20px;
+        padding: 8px 20px;
         border-bottom: 1px solid var(--line);
+        background: #ffffff;
       }
-      .tablist { display: flex; gap: 8px; flex-wrap: wrap; }
+      .tablist { display: flex; gap: 4px; flex-wrap: wrap; }
       .tab {
-        padding: 8px 14px;
-        border-radius: 12px;
+        padding: 6px 14px;
+        border-radius: 4px;
         border: 1px solid transparent;
         color: var(--muted);
         background: transparent;
         cursor: pointer;
+        font-size: 13px;
+        transition: background 0.12s, color 0.12s;
       }
+      .tab:hover { background: var(--blue-soft); color: var(--accent); }
       .tab.active {
-        background: white;
-        border-color: var(--line);
-        color: var(--ink);
-        font-weight: 700;
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #ffffff;
+        font-weight: 600;
       }
       .content { min-height: 0; overflow: hidden; }
       .view { display: none; height: 100%; }
       .view.active { display: block; }
-      .preview-wrap { overflow: auto; padding: 24px 0 36px; height: 100%; }
+      .preview-wrap { overflow: auto; padding: 20px 0 36px; height: 100%; }
       .page {
         width: 780px;
         min-height: 1080px;
         margin: 0 auto;
         background: white;
-        box-shadow: 0 12px 36px rgba(58, 42, 28, 0.12);
-        border: 1px solid #e5e0d8;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        border: 1px solid var(--line);
         padding: 56px 64px;
       }
       .landing-grid {
@@ -158,7 +168,7 @@
       .panel {
         background: var(--panel-2);
         border: 1px solid var(--line);
-        border-radius: 16px;
+        border-radius: 8px;
         padding: 16px 18px;
       }
       .panel h3 {
@@ -174,10 +184,11 @@
       .form-grid + .form-grid { margin-top: 12px; }
       input, select, textarea {
         width: 100%;
-        padding: 10px 12px;
-        border-radius: 10px;
+        padding: 8px 12px;
+        border-radius: 4px;
         border: 1px solid var(--line);
         background: white;
+        font-size: 13px;
       }
       textarea {
         min-height: 150px;
@@ -186,18 +197,23 @@
         font-size: 13px;
       }
       .button {
-        padding: 10px 16px;
+        padding: 8px 16px;
         border: 0;
-        border-radius: 999px;
+        border-radius: 4px;
         background: var(--accent);
         color: white;
         cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: background 0.12s, box-shadow 0.12s;
       }
+      .button:hover { background: #1e4580; box-shadow: 0 2px 6px rgba(43,87,151,0.2); }
       .button.secondary {
         background: white;
         color: var(--ink);
         border: 1px solid var(--line);
       }
+      .button.secondary:hover { background: var(--blue-soft); }
       .button-row {
         display: flex;
         gap: 10px;
@@ -215,16 +231,17 @@
       .chip {
         display: inline-flex;
         align-items: center;
-        border-radius: 999px;
-        padding: 6px 10px;
-        background: #f2eee7;
-        border: 1px solid var(--line);
-        font-size: 12px;
+        border-radius: 4px;
+        padding: 4px 8px;
+        background: var(--blue-soft);
+        border: 1px solid var(--blue-line);
+        font-size: 11px;
+        color: var(--accent);
       }
       .result-box {
         white-space: pre-wrap;
-        background: white;
-        border-radius: 12px;
+        background: #f8fafc;
+        border-radius: 6px;
         border: 1px solid var(--line);
         padding: 14px;
         min-height: 180px;
@@ -234,105 +251,168 @@
       .result-box.success { color: var(--success); }
       .result-box.error { color: var(--error); }
       .hidden { display: none !important; }
+      .profile-gen-sticky {
+        flex-shrink: 0;
+        background: #ffffff;
+        border-bottom: 1px solid var(--line);
+        padding: 10px 24px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      }
       .statusbar {
         display: flex;
         justify-content: space-between;
         gap: 12px;
-        padding: 10px 18px;
+        padding: 8px 18px;
         border-top: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.8);
-        font-size: 13px;
+        background: #ffffff;
+        font-size: 12px;
         color: var(--muted);
       }
       .inspector {
         display: grid;
-        grid-template-rows: auto auto 1fr;
+        grid-template-rows: auto 1fr;
         border-left: 1px solid var(--line);
-        background: #f7f2ea;
+        background: #f8fafc;
       }
       .inspector-head {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 16px 18px;
+        padding: 12px 16px;
         border-bottom: 1px solid var(--line);
+        background: #ffffff;
       }
       .seg {
         display: inline-flex;
-        border-radius: 12px;
-        background: #ece8df;
-        padding: 4px;
-        gap: 4px;
+        border-radius: 4px;
+        background: var(--blue-soft);
+        padding: 3px;
+        gap: 2px;
       }
       .seg button, .seg span {
-        padding: 6px 12px;
-        border-radius: 10px;
+        padding: 5px 10px;
+        border-radius: 3px;
         color: var(--muted);
         border: 0;
         background: transparent;
         cursor: pointer;
+        font-size: 12px;
+        transition: background 0.12s, color 0.12s;
       }
       .seg .active {
-        background: white;
-        color: #2563eb;
-        font-weight: 700;
+        background: var(--accent);
+        color: #ffffff;
+        font-weight: 600;
       }
       .inspector-body {
         overflow: auto;
-        padding: 16px;
-        display: grid;
-        grid-template-rows: 260px 1fr;
-        gap: 16px;
+        padding: 14px;
       }
       .inspector-panel { display: none; overflow: auto; min-height: 0; }
       .inspector-panel.active { display: flex; flex-direction: column; }
-      .summary-bottom { display: none; overflow: auto; min-height: 0; }
-      .summary-bottom.active { display: flex; flex-direction: column; }
       /* Block preview styles */
       .block {
-        border-radius: 8px;
+        border-radius: 4px;
         padding: 4px 8px;
-        margin: 6px -8px;
+        margin: 4px -8px;
         cursor: pointer;
-        transition: background 0.12s;
+        transition: background 0.1s;
         position: relative;
       }
-      .block:hover { background: #f5f0e8; }
-      .block.selected { background: var(--highlight); outline: 1px solid #b8c8ff; }
+      .block:hover { background: var(--blue-soft); }
+      .block.selected { background: var(--highlight); outline: 1px solid var(--accent); }
       .block.heading1 { font-size: 26px; font-weight: 700; text-align: center; margin: 18px -8px 10px; }
       .block.heading2 { font-size: 18px; font-weight: 700; margin: 14px -8px 8px; }
       .block.heading3 { font-size: 16px; font-weight: 700; margin: 10px -8px 6px; }
       .block.body { font-size: 15px; line-height: 1.9; text-indent: 2em; }
       .block.caption { text-align: center; font-size: 13px; color: #4b5563; }
-      .block.note { background: #f7f4ee; border-left: 4px solid #d2b48c; padding: 10px 14px; }
-      .block.code { font-family: Consolas, "Courier New", monospace; font-size: 13px; background: #f5f5f5; padding: 10px 14px; white-space: pre-wrap; }
+      .block.note { background: #f0f7ff; border-left: 4px solid var(--accent); padding: 10px 14px; }
+      .block.code { font-family: Consolas, "Courier New", monospace; font-size: 13px; background: #f5f7fa; padding: 10px 14px; white-space: pre-wrap; }
       .block.ignore { opacity: 0.35; }
       .block.listLevel1 { font-size: 15px; line-height: 1.9; padding-left: 24px; }
       .block.listLevel2 { font-size: 15px; line-height: 1.9; padding-left: 48px; }
       .block.table { background: #fafafa; border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-family: Consolas, monospace; font-size: 13px; }
       .block.image { text-align: center; padding: 12px 8px; cursor: default; }
-      .block.image img { border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-      .block.image.selected img { outline: 2px solid #b8c8ff; }
+      .block.image img { border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+      .block.image.selected img { outline: 2px solid var(--accent); }
       .image-caption { margin-top: 6px; font-size: 13px; color: var(--muted); }
+
+      .block-hf {
+        padding: 8px 14px;
+        font-size: 12px;
+        color: var(--muted);
+        border: 1px dashed var(--line);
+        border-radius: 4px;
+        text-align: center;
+        background: #f8fafc;
+        margin-bottom: 8px;
+      }
+      .block-header::before { content: '页眉 ▸ '; font-weight: 600; color: var(--accent); }
+      .block-footer { margin-top: 8px; margin-bottom: 0; }
+      .block-footer::before { content: '页脚 ▸ '; font-weight: 600; color: var(--accent); }
+
+      /* Format tree (Word Shift+F1 style) */
+      .format-tree { font-size: 13px; line-height: 1.7; }
+      .format-tree .ft-section { margin-bottom: 12px; }
+      .format-tree .ft-header {
+        font-weight: 700; font-size: 13px; color: var(--accent);
+        border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-bottom: 6px;
+      }
+      .format-tree .ft-row { display: flex; gap: 8px; padding: 2px 0; }
+      .format-tree .ft-label { color: var(--muted); min-width: 100px; flex-shrink: 0; }
+      .format-tree .ft-value { color: var(--ink); font-weight: 500; }
+      .format-tree .ft-source {
+        font-size: 11px; color: var(--accent); background: var(--blue-soft);
+        border-radius: 3px; padding: 1px 6px; margin-left: 6px;
+      }
+      .format-tree .ft-sub { margin-left: 16px; border-left: 2px solid var(--line); padding-left: 10px; }
+      .format-tree .ft-empty { color: var(--muted); font-style: italic; }
 
       /* Context menu styles */
       .context-menu {
         position: fixed;
         background: white;
         border: 1px solid var(--line);
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(58, 42, 28, 0.14);
+        border-radius: 6px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         z-index: 9999;
         min-width: 200px;
-        padding: 8px 0;
+        padding: 6px 0;
       }
       .context-item {
-        padding: 8px 16px;
+        padding: 7px 16px;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 13px;
         transition: background 0.08s;
       }
       .context-item:hover { background: var(--blue-soft); }
+
+      .toast-container {
+        position: fixed;
+        top: 120px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        pointer-events: none;
+      }
+      .toast {
+        background: var(--accent);
+        color: #fff;
+        padding: 14px 28px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 4px 20px rgba(43,87,151,0.25);
+        opacity: 0;
+        transform: translateY(-12px);
+        animation: toast-in 0.25s ease forwards, toast-out 0.3s ease 2s forwards;
+      }
+      @keyframes toast-in { to { opacity: 1; transform: translateY(0); } }
+      @keyframes toast-out { to { opacity: 0; transform: translateY(-8px); } }
 
       @media (max-width: 1440px) {
         .app { grid-template-columns: 240px minmax(540px, 1fr) 360px; }
@@ -343,7 +423,7 @@
   <body>
     <div class="app">
       <aside class="sidebar">
-        <div class="brand">WriteMaster</div>
+        <div class="brand"><img src="../icon/ChatGPT Image May 22, 2026, 02_57_50 AM.png" alt="logo" />WriteMaster</div>
         <button class="action" id="primaryAction">应用当前模板</button>
 
         <div class="nav">
@@ -368,7 +448,7 @@
 
         <div>
           <div class="section-title">最近使用</div>
-          <div class="cards" id="recentFiles">
+          <div class="cards" id="recentFiles" style="max-height:200px;overflow-y:auto;">
             <div class="muted" style="padding: 10px 0;">暂无最近使用的文件</div>
           </div>
         </div>
@@ -376,7 +456,7 @@
         <div class="spacer"></div>
         <div class="sidebar-footer">
           <button class="icon-btn" title="刷新" id="refreshMasters">↻</button>
-          <button class="icon-btn" title="关于 WriteMaster v0.1.0" id="aboutBtn">i</button>
+          <button class="icon-btn" title="关于 WriteMaster v0.4.0" id="aboutBtn">i</button>
         </div>
       </aside>
 
@@ -395,6 +475,7 @@
             <button class="tab" data-view-target="config-view">Profile 配置</button>
           </div>
           <div class="tag" id="toolbarMasterTag">当前母版：review-master</div>
+          <button class="button secondary" id="importOtherTemplate" style="display:none;font-size:12px;padding:5px 12px;">导入其他文件作为模板</button>
         </div>
 
         <div class="content">
@@ -498,15 +579,12 @@
             </div>
 
             <!-- Extraction result (shown after a master is loaded) -->
-            <div id="extract-result" class="preview-wrap hidden">
-              <div class="page" id="blockPreview">
-                <!-- Dynamically populated with clickable blocks -->
-              </div>
-              <!-- Profile generation panel -->
-              <div class="page" style="min-height:auto; margin-top:18px;">
-                <div class="panel" id="profileGenPanel">
-                  <h3>生成模板 Profile</h3>
-                  <div class="form-grid" style="margin-top: 12px;">
+            <div id="extract-result" style="display:none;flex-direction:column;height:100%;">
+              <!-- Profile generation panel (sticky top, not scrollable) -->
+              <details class="profile-gen-sticky" id="profileGenPanel">
+                <summary style="cursor:pointer;font-size:14px;font-weight:600;padding:10px 0;">生成模板 Profile</summary>
+                <div style="padding:8px 0 0;">
+                  <div class="form-grid" style="margin-top: 8px;">
                     <label for="profileName">Profile 名称</label>
                     <input id="profileName" placeholder="例如：mysql-textbook-liu" />
                     <span></span>
@@ -517,6 +595,13 @@
                     <button class="button secondary" id="clusterBtn">自动聚类</button>
                     <button class="button" id="generateProfileBtn">生成 Profile</button>
                   </div>
+                </div>
+              </details>
+
+              <!-- Scrollable document preview -->
+              <div class="preview-wrap" style="flex:1;min-height:0;">
+                <div class="page" id="blockPreview">
+                  <!-- Dynamically populated with clickable blocks -->
                 </div>
               </div>
             </div>
@@ -571,55 +656,59 @@
 
       <aside class="inspector">
         <div class="inspector-head">
-          <div style="font-weight: 700;">结构与规则</div>
-          <div class="seg" id="rightTopTabs">
-            <button class="active" data-panel-target="json-panel">JSON</button>
-            <button data-panel-target="style-panel">样式</button>
-            <button data-panel-target="profile-panel">Profile</button>
-          </div>
-        </div>
-
-        <div class="inspector-head" style="padding-top: 10px; padding-bottom: 10px;">
-          <div class="seg" id="summaryTabs">
-            <span class="active" data-summary-target="summary-state">当前状态</span>
-            <span data-summary-target="summary-master">模板摘要</span>
-            <span data-summary-target="summary-result">结果信息</span>
+          <div class="seg" id="inspectorTabs">
+            <span class="active" data-tab-target="tab-state">当前状态</span>
+            <span data-tab-target="tab-styles">现有样式</span>
+            <span data-tab-target="tab-summary">运行摘要</span>
           </div>
         </div>
 
         <div class="inspector-body">
-          <div class="panel inspector-panel active" id="json-panel">
-            <h3>当前状态 JSON</h3>
-            <div class="json" id="stateJson"></div>
-          </div>
-
-          <div class="panel inspector-panel" id="style-panel">
-            <h3>临时样式</h3>
-            <div class="style-list" id="inspectorTempStyleList">
-              <div class="muted">尚未聚类，在模板提取视图中点击「自动聚类」生成。</div>
+          <!-- Tab: 当前状态 -->
+          <div class="panel inspector-panel active" id="tab-state">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+              <div class="seg" id="stateSubTabs">
+                <span class="active" data-state-sub="state-json">JSON</span>
+                <span data-state-sub="state-format">段落格式</span>
+              </div>
+              <div style="flex:1;"></div>
+              <input id="tempStyleName" placeholder="样式名称" style="width:100px;padding:5px 8px;border-radius:8px;border:1px solid var(--line);font-size:12px;" />
+              <button class="button" id="saveAsTempStyle" style="padding:5px 12px;font-size:12px;">存为临时样式</button>
             </div>
-            <h3 style="margin-top: 16px;">模板列表</h3>
-            <div class="style-list" id="inspectorMasterList"></div>
+            <div id="state-json-content" class="json" style="overflow:auto;flex:1;"></div>
+            <div id="state-format-content" class="format-tree" style="overflow:auto;flex:1;display:none;">
+              <div class="muted">选中一个段落块后显示其完整格式信息。</div>
+            </div>
           </div>
 
-          <div class="panel inspector-panel" id="profile-panel">
-            <h3>当前 Profile 摘要</h3>
+          <!-- Tab: 现有样式 -->
+          <div class="panel inspector-panel" id="tab-styles">
+            <h3>用户保存的临时样式</h3>
+            <div class="style-list" id="savedTempStyleList">
+              <div class="muted">尚未保存任何临时样式。</div>
+            </div>
+            <h3 style="margin-top:16px;">自动聚类样式</h3>
+            <div class="style-list" id="inspectorTempStyleList">
+              <div class="muted">尚未聚类，点击「自动聚类」生成。</div>
+            </div>
+          </div>
+
+          <!-- Tab: 运行摘要 -->
+          <div class="panel inspector-panel" id="tab-summary">
+            <h3>运行结果</h3>
+            <div class="result-box" id="summaryResultBox" style="min-height:80px;">等待任务执行。</div>
+            <h3 style="margin-top:16px;">当前 Profile</h3>
             <div class="style-list" id="inspectorProfileList">
               <div class="style-item">
                 <div class="style-name">应用链路</div>
                 <div class="style-meta">Markdown → temp.docx → review.docx / DOCX review</div>
               </div>
-              <div class="style-item">
-                <div class="style-name">内置模板策略</div>
-                <div class="style-meta">优先选 built-in，外部母版作为覆盖入口</div>
-              </div>
             </div>
-          </div>
-
-          <!-- Bottom summary panels (controlled by second seg) -->
-          <div class="panel summary-bottom active" id="summary-state">
-            <h3>运行摘要</h3>
-            <div class="config-list">
+            <h3 style="margin-top:16px;">母版信息</h3>
+            <div class="config-list" id="inspectorMasterSummary">
+              <div class="muted">选择母版后显示摘要。</div>
+            </div>
+            <div class="config-list" style="margin-top:12px;">
               <div class="config-item">
                 <div class="config-name">最近输出</div>
                 <div class="config-meta" id="lastOutput">尚未生成</div>
@@ -634,21 +723,11 @@
               </div>
             </div>
           </div>
-
-          <div class="panel summary-bottom" id="summary-master">
-            <h3>模板摘要</h3>
-            <div class="config-list" id="inspectorMasterSummary">
-              <div class="muted">选择母版后显示摘要。</div>
-            </div>
-          </div>
-
-          <div class="panel summary-bottom" id="summary-result">
-            <h3>结果信息</h3>
-            <div class="result-box" id="summaryResultBox" style="min-height:100px;">等待任务执行。</div>
-          </div>
         </div>
       </aside>
     </div>
+
+    <div id="toastContainer" class="toast-container"></div>
 
     <div id="contextMenu" class="context-menu hidden">
       <div class="context-item" data-role="body">设为正文</div>
