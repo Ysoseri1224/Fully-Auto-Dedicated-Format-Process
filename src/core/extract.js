@@ -363,8 +363,9 @@ function extractImagesFromParagraph(pEl, index, relMap, zip) {
   for (let i = 0; i < allDrawings.length; i++) {
     const { el: drawingEl } = allDrawings[i];
 
-    // Get extent (dimensions in EMUs)
-    const extent = drawingEl.getElementsByTagNameNS(A_NS, 'extent')[0];
+    // Get extent (dimensions in EMUs) — wp:extent or a:extent
+    let extent = drawingEl.getElementsByTagNameNS(DRAWING_NS, 'extent')[0];
+    if (!extent) extent = drawingEl.getElementsByTagNameNS(A_NS, 'extent')[0];
     let cx = extent ? extent.getAttribute('cx') : null;
     let cy = extent ? extent.getAttribute('cy') : null;
 
@@ -372,9 +373,12 @@ function extractImagesFromParagraph(pEl, index, relMap, zip) {
     const widthPx = cx ? Math.round(parseInt(cx, 10) / 9525) : null;
     const heightPx = cy ? Math.round(parseInt(cy, 10) / 9525) : null;
 
-    // Get alt text / description
+    // Get alt text / description from docPr
     const docPr = drawingEl.getElementsByTagNameNS(DRAWING_NS, 'docPr')[0];
     const altText = docPr ? (docPr.getAttribute('descr') || docPr.getAttribute('name') || '') : '';
+
+    // Try to get a better caption from surrounding text or parent paragraph
+    const parentText = getParagraphText(pEl).trim();
 
     // Find the blip element with r:embed
     const blips = drawingEl.getElementsByTagNameNS(A_NS, 'blip');
