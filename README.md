@@ -1,7 +1,7 @@
 <p align="center">
   <h1 align="center">WriteMaster</h1>
   <p align="center"><strong>把 Markdown 或 DOCX 转成指定母版风格的 DOCX</strong> </p>
-  <p align="center">  — 统一 OOXML 规则后处理，支持 CLI / 单文件 / Electron 桌面三种入口。</p>
+  <p align="center">  统一 OOXML 规则后处理，支持 CLI / 单文件 / Electron 桌面三种入口。</p>
 </p>
 
 <p align="center">
@@ -59,7 +59,8 @@ node src/cli.js --md ./test/your-file.md --master-id review-master
 
 ## 为什么做这个项目
 
-学术教材和专著的排版工作流长期依赖"手动在 Word 里调样式"。作者通常用 Markdown 写作，通过 Pandoc 转成 DOCX，但产出的文件在段落样式、编号层级、代码块格式、表格结构等方面与出版社要求的母版差距很大。
+本项目的想法产生于撰写学术教材和专著的排版工作，由于word的格式十分繁杂，且论文和书籍的写作没有一个像Latex那样的成熟模板。
+在AI agent工作流中，我们通常会先用 Markdown 完成初稿，然后通过 Pandoc 转成 DOCX，但产出的文件在段落样式、编号层级、代码块格式、表格结构等方面与出版社要求的母版差距很大，而pandoc没办法很精确地处理这些格式，于是想到了利用Nodejs的docx库，以满足一些定制化的需求。
 
 **核心痛点：**
 - Pandoc 生成的 DOCX 样式不精确——所有段落都是同一种格式
@@ -67,7 +68,7 @@ node src/cli.js --md ./test/your-file.md --master-id review-master
 - 编号系统（项目目标、括号编号、圈号编号）需要手工逐段调整
 - 表格经常丢失，需要从 Markdown 源手动恢复
 
-WriteMaster 把这些问题固化成可复用规则，一次配置，重复使用。
+这个项目尝试把这些问题固化成可复用规则，实现一次配置，重复使用。
 
 ---
 
