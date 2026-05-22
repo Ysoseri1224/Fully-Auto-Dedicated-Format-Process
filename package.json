@@ -17,6 +17,7 @@
   "build": {
     "appId": "com.ysoseri1224.writemaster",
     "productName": "WriteMaster",
+    "icon": "icon/logo.png",
     "directories": {
       "output": "electron-dist"
     },
