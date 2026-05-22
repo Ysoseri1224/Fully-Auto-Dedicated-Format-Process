@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.4.1
+
+### 编号系统修复
+- 编号 abstractNumId 不再硬编码，改为按格式动态查找（`findOrCreateAbstractNum`）
+- 专著模板注入完整编号定义：（%1）、%1.、① 三种格式（含缩进、字体提示、后缀）
+- 修复专著模板 (1)(2) 项渲染为裸数字的问题（模板原本缺少"（%1）"abstractNum）
+- 两套模板（review-master / chapter10-monograph）现在共用同一套编号逻辑
+
+### 专著模板适配
+- 模板更新为 `ref/9_note_picture_formula_图片批注.docx`
+- 二级标题样式修正：等线字体、小三(sz=30)、加粗、段前13磅段后6磅、1.2倍行距
+- "一、二、..." 段落自动加粗
+- `[图x-x...]` 和 `[表x-x...]` 不再被误识别为标题
+- 标题 numPr 禁用（`numId=0`），避免样式自带编号与文本前缀重复
+- 标题不再执行 paintRuns，保留样式定义控制格式
+
+### OOXML 修复
+- 尾注文件复制补全三层验证：文件 + relationship + Content_Types Override
+- 半角括号 `(1)` 与全角 `（1）` 统一识别
+
 ## 0.4.0
 
 ### UI 重构

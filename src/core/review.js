@@ -198,6 +198,15 @@ function getPreviousParagraph(node) {
   return null;
 }
 
+function getNextParagraph(node) {
+  let cur = node ? node.nextSibling : null;
+  while (cur) {
+    if (cur.nodeType === 1 && cur.localName === 'p' && getParagraphText(cur)) return cur;
+    cur = cur.nextSibling;
+  }
+  return null;
+}
+
 function ensurePPr(doc, pEl) {
   let pPr = pEl.getElementsByTagNameNS(W_NS, 'pPr')[0];
   if (!pPr) {
@@ -264,10 +273,130 @@ function parseMarkdownTables(mdPath, backupPath) {
 }
 
 function copyMasterPackage(masterZip, targetZip) {
-  ['word/styles.xml', 'word/numbering.xml', 'word/settings.xml', 'word/fontTable.xml', 'word/theme/theme1.xml'].forEach((entry) => {
+  ['word/styles.xml', 'word/numbering.xml', 'word/settings.xml', 'word/fontTable.xml', 'word/theme/theme1.xml', 'word/endnotes.xml', 'word/footnotes.xml'].forEach((entry) => {
     const text = getXml(masterZip, entry);
     if (text) targetZip.file(entry, text);
   });
+  const relsPath = 'word/_rels/document.xml.rels';
+  const relsXml = getXml(targetZip, relsPath);
+  if (relsXml) {
+    const relsDoc = parseXml(relsXml);
+    const rels = relsDoc.getElementsByTagName('Relationship');
+    let hasEndnotes = false;
+    let hasFoootnotes = false;
+    let maxId = 0;
+    for (let i = 0; i < rels.length; i++) {
+      const type = rels[i].getAttribute('Type');
+      if (type.includes('/endnotes')) hasEndnotes = true;
+      if (type.includes('/footnotes')) hasFoootnotes = true;
+      const rid = rels[i].getAttribute('Id') || '';
+      const num = parseInt(rid.replace('rId', ''), 10);
+      if (num > maxId) maxId = num;
+    }
+    const root = relsDoc.documentElement;
+    if (!hasEndnotes && targetZip.file('word/endnotes.xml')) {
+      const el = relsDoc.createElement('Relationship');
+      el.setAttribute('Id', 'rId' + (++maxId));
+      el.setAttribute('Type', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/endnotes');
+      el.setAttribute('Target', 'endnotes.xml');
+      root.appendChild(el);
+    }
+    if (!hasFoootnotes && targetZip.file('word/footnotes.xml')) {
+      const el = relsDoc.createElement('Relationship');
+      el.setAttribute('Id', 'rId' + (++maxId));
+      el.setAttribute('Type', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes');
+      el.setAttribute('Target', 'footnotes.xml');
+      root.appendChild(el);
+    }
+    if (!hasEndnotes || !hasFoootnotes) {
+      targetZip.file(relsPath, new XMLSerializer().serializeToString(relsDoc));
+    }
+  }
+  const ctPath = '[Content_Types].xml';
+  const ctXml = getXml(targetZip, ctPath);
+  if (ctXml) {
+    const ctDoc = parseXml(ctXml);
+    const overrides = ctDoc.getElementsByTagName('Override');
+    let hasEndnotesCT = false;
+    let hasFootnotesCT = false;
+    for (let i = 0; i < overrides.length; i++) {
+      const pn = overrides[i].getAttribute('PartName');
+      if (pn === '/word/endnotes.xml') hasEndnotesCT = true;
+      if (pn === '/word/footnotes.xml') hasFootnotesCT = true;
+    }
+    const root = ctDoc.documentElement;
+    if (!hasEndnotesCT && targetZip.file('word/endnotes.xml')) {
+      const el = ctDoc.createElement('Override');
+      el.setAttribute('PartName', '/word/endnotes.xml');
+      el.setAttribute('ContentType', 'application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml');
+      root.appendChild(el);
+    }
+    if (!hasFootnotesCT && targetZip.file('word/footnotes.xml')) {
+      const el = ctDoc.createElement('Override');
+      el.setAttribute('PartName', '/word/footnotes.xml');
+      el.setAttribute('ContentType', 'application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml');
+      root.appendChild(el);
+    }
+    if (!hasEndnotesCT || !hasFootnotesCT) {
+      targetZip.file(ctPath, new XMLSerializer().serializeToString(ctDoc));
+    }
+  }
+}
+
+function patchHeadingStyles(targetZip) {
+  const stylesXml = getXml(targetZip, 'word/styles.xml');
+  if (!stylesXml) return;
+  const stylesDoc = parseXml(stylesXml);
+  const styles = stylesDoc.getElementsByTagNameNS(W_NS, 'style');
+  for (let i = 0; i < styles.length; i++) {
+    const id = styles[i].getAttribute('w:styleId');
+    if (id !== '2' && id !== '3') continue;
+    const pPr = styles[i].getElementsByTagNameNS(W_NS, 'pPr')[0];
+    if (!pPr) continue;
+    const numPr = pPr.getElementsByTagNameNS(W_NS, 'numPr')[0];
+    if (numPr) pPr.removeChild(numPr);
+    let spacing = pPr.getElementsByTagNameNS(W_NS, 'spacing')[0];
+    if (!spacing) {
+      spacing = stylesDoc.createElementNS(W_NS, 'w:spacing');
+      pPr.appendChild(spacing);
+    }
+    if (id === '2') {
+      spacing.setAttribute('w:before', '260');
+      spacing.setAttribute('w:after', '120');
+      spacing.setAttribute('w:line', '288');
+      spacing.setAttribute('w:lineRule', 'auto');
+      spacing.removeAttribute('w:beforeLines');
+      spacing.removeAttribute('w:afterLines');
+    }
+    if (id === '3') {
+      spacing.setAttribute('w:before', '260');
+      spacing.setAttribute('w:after', '120');
+      spacing.setAttribute('w:line', '288');
+      spacing.setAttribute('w:lineRule', 'auto');
+      spacing.removeAttribute('w:beforeLines');
+      spacing.removeAttribute('w:afterLines');
+    }
+    let rPr = styles[i].getElementsByTagNameNS(W_NS, 'rPr')[0];
+    if (!rPr) {
+      rPr = stylesDoc.createElementNS(W_NS, 'w:rPr');
+      styles[i].appendChild(rPr);
+    }
+    while (rPr.firstChild) rPr.removeChild(rPr.firstChild);
+    const rFonts = stylesDoc.createElementNS(W_NS, 'w:rFonts');
+    rFonts.setAttribute('w:ascii', '等线');
+    rFonts.setAttribute('w:eastAsia', '等线');
+    rFonts.setAttribute('w:hAnsi', '等线');
+    rPr.appendChild(rFonts);
+    rPr.appendChild(stylesDoc.createElementNS(W_NS, 'w:b'));
+    rPr.appendChild(stylesDoc.createElementNS(W_NS, 'w:bCs'));
+    const sz = stylesDoc.createElementNS(W_NS, 'w:sz');
+    sz.setAttribute('w:val', id === '2' ? '30' : '24');
+    rPr.appendChild(sz);
+    const szCs = stylesDoc.createElementNS(W_NS, 'w:szCs');
+    szCs.setAttribute('w:val', id === '2' ? '30' : '24');
+    rPr.appendChild(szCs);
+  }
+  targetZip.file('word/styles.xml', serializeXml(stylesDoc));
 }
 
 function buildStyleMap(zip) {
@@ -313,10 +442,14 @@ function paintRuns(doc, pEl, styleId, styleRpr) {
   }
 }
 
-function classify(text, currentStyleId, styleIds) {
+function classify(text, currentStyleId, styleIds, prevIsCode) {
   if (!text) return null;
   if (text === '应用篇' || /^项目[一二三四五六七八九十0-9]/.test(text)) return '1';
-  if (/^\[[^\]]+\]$/.test(text) || /^任务\s*\d+/.test(text) || /^\d+\.\d+\s/.test(text)) return '2';
+  if (/^\[[^\]]+\]$/.test(text) && !prevIsCode && !/^\[公式/.test(text) && !/^\[图/.test(text) && !/^\[表/.test(text)) {
+    if (/^任务\s*\d+/.test(text) || /^\d+\.\d+\s/.test(text)) return '2';
+    return '2';
+  }
+  if (/^任务\s*\d+/.test(text) || /^\d+\.\d+\s/.test(text)) return '2';
   if (/^\d+\.\d+\.\d+\s/.test(text)) return '3';
   if (/^图\s*\d+/.test(text) || /^表\s*\d+/.test(text)) return styleIds.caption;
   if (isNoteParagraph(text)) return styleIds.note;
@@ -423,19 +556,30 @@ function splitParagraphIntoParagraphs(doc, body, pEl, lines, styleId, styleRpr) 
 function splitNoteParagraph(doc, body, pEl, styleId, styleRpr) {
   const text = getParagraphText(pEl);
   const match = text.match(/^(说明|提示|注意)([:：])(.*)$/);
-  if (!match) return;
+  if (!match) return null;
   const prefix = `${match[1]}${match[2]}`;
   const rest = (match[3] || '').trim();
   setParagraphStyle(doc, pEl, styleId);
   cleanPPr(pEl);
   clearParagraphRuns(pEl);
   pEl.appendChild(makeRun(doc, prefix, styleId, styleRpr, true));
-  if (!rest) return;
-  const nextP = doc.createElementNS(W_NS, 'w:p');
-  setParagraphStyle(doc, nextP, styleId);
-  cleanPPr(nextP);
-  nextP.appendChild(makeRun(doc, rest, styleId, styleRpr));
-  insertAfter(body, pEl, nextP);
+  if (rest) {
+    const nextP = doc.createElementNS(W_NS, 'w:p');
+    setParagraphStyle(doc, nextP, styleId);
+    cleanPPr(nextP);
+    nextP.appendChild(makeRun(doc, rest, styleId, styleRpr));
+    insertAfter(body, pEl, nextP);
+    return null;
+  } else {
+    const following = getNextParagraph(pEl);
+    if (following) {
+      setParagraphStyle(doc, following, styleId);
+      cleanPPr(following);
+      paintRuns(doc, following, styleId, styleRpr);
+      return following;
+    }
+  }
+  return null;
 }
 
 function rewriteTextRuns(doc, pEl, text, styleId, styleRpr, bold = false) {
@@ -457,6 +601,58 @@ function getMaxNumId(numDoc) {
     if (v > max) max = v;
   }
   return max;
+}
+
+function getMaxAbstractNumId(numDoc) {
+  let max = -1;
+  const abs = numDoc.getElementsByTagNameNS(W_NS, 'abstractNum');
+  for (let i = 0; i < abs.length; i++) {
+    const v = parseInt(abs[i].getAttribute('w:abstractNumId') || '0', 10);
+    if (v > max) max = v;
+  }
+  return max;
+}
+
+function findOrCreateAbstractNum(numDoc, numFmt, lvlText) {
+  const abs = numDoc.getElementsByTagNameNS(W_NS, 'abstractNum');
+  for (let i = 0; i < abs.length; i++) {
+    const lvls = abs[i].getElementsByTagNameNS(W_NS, 'lvl');
+    for (let j = 0; j < lvls.length; j++) {
+      if (lvls[j].getAttribute('w:ilvl') !== '0') continue;
+      const fmtEl = lvls[j].getElementsByTagNameNS(W_NS, 'numFmt')[0];
+      const txtEl = lvls[j].getElementsByTagNameNS(W_NS, 'lvlText')[0];
+      const f = fmtEl && fmtEl.getAttribute('w:val');
+      const t = txtEl && txtEl.getAttribute('w:val');
+      if (f === numFmt && t === lvlText) {
+        return parseInt(abs[i].getAttribute('w:abstractNumId'), 10);
+      }
+    }
+  }
+  const newId = getMaxAbstractNumId(numDoc) + 1;
+  const absEl = numDoc.createElementNS(W_NS, 'w:abstractNum');
+  absEl.setAttribute('w:abstractNumId', String(newId));
+  const lvl = numDoc.createElementNS(W_NS, 'w:lvl');
+  lvl.setAttribute('w:ilvl', '0');
+  const startEl = numDoc.createElementNS(W_NS, 'w:start');
+  startEl.setAttribute('w:val', '1');
+  lvl.appendChild(startEl);
+  const fmtEl = numDoc.createElementNS(W_NS, 'w:numFmt');
+  fmtEl.setAttribute('w:val', numFmt);
+  lvl.appendChild(fmtEl);
+  const txtEl = numDoc.createElementNS(W_NS, 'w:lvlText');
+  txtEl.setAttribute('w:val', lvlText);
+  lvl.appendChild(txtEl);
+  const jcEl = numDoc.createElementNS(W_NS, 'w:lvlJc');
+  jcEl.setAttribute('w:val', 'left');
+  lvl.appendChild(jcEl);
+  absEl.appendChild(lvl);
+  const firstNum = numDoc.getElementsByTagNameNS(W_NS, 'num')[0];
+  if (firstNum) {
+    numDoc.documentElement.insertBefore(absEl, firstNum);
+  } else {
+    numDoc.documentElement.appendChild(absEl);
+  }
+  return newId;
 }
 
 function cloneNum(numDoc, abstractNumId) {
@@ -494,7 +690,7 @@ function setNumPr(doc, pEl, numId) {
 }
 
 function stripLeadingParen(text) {
-  return text.replace(/^（\d+）\s*/, '');
+  return text.replace(/^[（(]\d+[）)]\s*/, '');
 }
 
 function stripLeadingCircled(text) {
@@ -590,6 +786,7 @@ function processReview(options) {
   const masterZip = loadDocx(resolvedMaster);
   const targetZip = loadDocx(inputPath);
   copyMasterPackage(masterZip, targetZip);
+  patchHeadingStyles(targetZip);
   const styleMap = buildStyleMap(targetZip);
   const numberingDoc = getOrCreateNumberingDoc(targetZip);
   const doc = parseXml(getXml(targetZip, 'word/document.xml'));
@@ -597,7 +794,7 @@ function processReview(options) {
   const tableMap = parseMarkdownTables(mdPath, backupMdPath);
 
   const styleIds = {
-    body: styleMap.nameToId['正文样式'],
+    body: styleMap.nameToId['正文样式'] || styleMap.nameToId['论文正文'],
     caption: styleMap.nameToId['图、表标题样式'],
     code: styleMap.nameToId['示例语法格式'],
     note: styleMap.nameToId['提示说明样式'],
@@ -616,20 +813,32 @@ function processReview(options) {
   const children = childArray(body);
   const removeNodes = new Set();
   const insertions = [];
+  const noteFollowers = new Set();
   for (const child of children) {
     if (child.nodeType !== 1 || child.localName !== 'p') continue;
     const text = getParagraphText(child);
     if (!text) continue;
+    if (noteFollowers.has(child)) continue;
     const current = getParagraphStyleId(child);
     const codeLike = isSqlLikeParagraph(text, current);
     const prev = getPreviousParagraph(child);
-    const exampleCode = codeLike && prev && isExampleTitle(getParagraphText(prev));
-    const targetStyle = exampleCode ? styleIds.body : classify(text, current, styleIds);
+    const prevText = prev ? getParagraphText(prev) : '';
+    const prevStyle = prev ? getParagraphStyleId(prev) : '';
+    const prevIsCode = isSqlLikeParagraph(prevText, prevStyle);
+    const exampleCode = codeLike && prev && isExampleTitle(prevText);
+    const targetStyle = exampleCode ? styleIds.body : classify(text, current, styleIds, prevIsCode);
     if (targetStyle) {
       setParagraphStyle(doc, child, targetStyle);
       cleanPPr(child);
-      paintRuns(doc, child, targetStyle, styleMap.styleRpr);
-      if (targetStyle === styleIds.note) splitNoteParagraph(doc, body, child, targetStyle, styleMap.styleRpr);
+      if (targetStyle === '1' || targetStyle === '2' || targetStyle === '3') {
+        setNumPr(doc, child, 0);
+      } else {
+        paintRuns(doc, child, targetStyle, styleMap.styleRpr);
+      }
+      if (targetStyle === styleIds.note) {
+        const styled = splitNoteParagraph(doc, body, child, targetStyle, styleMap.styleRpr);
+        if (styled) noteFollowers.add(styled);
+      }
       if (codeLike) {
         const normalized = normalizeCodeText(text);
         const lines = normalized.split('\n');
@@ -643,6 +852,15 @@ function processReview(options) {
       const residualLines = extractParagraphLines(child);
       if (residualLines.length > 1 && targetStyle !== styleIds.code) {
         splitParagraphIntoParagraphs(doc, body, child, residualLines, targetStyle, styleMap.styleRpr);
+      }
+      if (/^[一二三四五六七八九十]+、/.test(text) && targetStyle === styleIds.body) {
+        const runs = child.getElementsByTagNameNS(W_NS, 'r');
+        for (let ri = 0; ri < runs.length; ri++) {
+          if (runs[ri].parentNode !== child) continue;
+          const rPr = runs[ri].getElementsByTagNameNS(W_NS, 'rPr')[0] || doc.createElementNS(W_NS, 'w:rPr');
+          if (!rPr.parentNode) runs[ri].insertBefore(rPr, runs[ri].firstChild);
+          if (!rPr.getElementsByTagNameNS(W_NS, 'b')[0]) rPr.appendChild(doc.createElementNS(W_NS, 'w:b'));
+        }
       }
     }
     const key = text.replace(/\s+/g, ' ').trim();
@@ -671,6 +889,9 @@ function processReview(options) {
   insertions.forEach(({ after, tbl }) => body.insertBefore(tbl, after.nextSibling));
 
   const paras = childArray(body).filter((n) => n.nodeType === 1 && n.localName === 'p');
+  const absParenId = findOrCreateAbstractNum(numberingDoc, 'decimal', '（%1）');
+  const absDotId = findOrCreateAbstractNum(numberingDoc, 'decimal', '%1.');
+  const absCircledId = findOrCreateAbstractNum(numberingDoc, 'decimalEnclosedCircleChinese', '%1　');
   let section = null;
   let groupNumId = null;
   let childNumId = null;
@@ -682,7 +903,7 @@ function processReview(options) {
     if (!text) continue;
     if (text === '[项目目标]') {
       section = 'goal';
-      groupNumId = cloneNum(numberingDoc, 30);
+      groupNumId = cloneNum(numberingDoc, absDotId);
       childNumId = null;
       bodyNumId = null;
       bodyCircledNumId = null;
@@ -691,7 +912,7 @@ function processReview(options) {
     if (text === '[项目要求]') {
       section = 'require';
       groupNumId = null;
-      childNumId = cloneNum(numberingDoc, 31);
+      childNumId = cloneNum(numberingDoc, absParenId);
       bodyNumId = null;
       bodyCircledNumId = null;
       continue;
@@ -713,10 +934,10 @@ function processReview(options) {
       paintRuns(doc, p, styleIds.body, styleMap.styleRpr);
       rewriteTextRuns(doc, p, text, styleIds.body, styleMap.styleRpr, true);
       setNumPr(doc, p, groupNumId);
-      childNumId = cloneNum(numberingDoc, 31);
+      childNumId = cloneNum(numberingDoc, absParenId);
       continue;
     }
-    if (section === 'goal' && /^（\d+）/.test(text)) {
+    if (section === 'goal' && /^[（(]\d+[）)]/.test(text)) {
       setParagraphStyle(doc, p, styleIds.body);
       cleanPPr(p);
       paintRuns(doc, p, styleIds.body, styleMap.styleRpr);
@@ -724,7 +945,18 @@ function processReview(options) {
       setNumPr(doc, p, childNumId);
       continue;
     }
-    if (section === 'require' && /^（\d+）/.test(text)) {
+    if (section === 'goal' && childNumId) {
+      const pPr = p.getElementsByTagNameNS(W_NS, 'pPr')[0];
+      const hasNumPr = pPr && pPr.getElementsByTagNameNS(W_NS, 'numPr')[0];
+      if (hasNumPr) {
+        setParagraphStyle(doc, p, styleIds.body);
+        cleanPPr(p);
+        paintRuns(doc, p, styleIds.body, styleMap.styleRpr);
+        setNumPr(doc, p, childNumId);
+        continue;
+      }
+    }
+    if (section === 'require' && /^[（(]\d+[）)]/.test(text)) {
       setParagraphStyle(doc, p, styleIds.body);
       cleanPPr(p);
       paintRuns(doc, p, styleIds.body, styleMap.styleRpr);
@@ -732,8 +964,19 @@ function processReview(options) {
       setNumPr(doc, p, childNumId);
       continue;
     }
-    if (!section && /^（\d+）/.test(text)) {
-      if (!bodyNumId) bodyNumId = cloneNum(numberingDoc, 31);
+    if (section === 'require' && childNumId) {
+      const pPr = p.getElementsByTagNameNS(W_NS, 'pPr')[0];
+      const hasNumPr = pPr && pPr.getElementsByTagNameNS(W_NS, 'numPr')[0];
+      if (hasNumPr) {
+        setParagraphStyle(doc, p, styleIds.body);
+        cleanPPr(p);
+        paintRuns(doc, p, styleIds.body, styleMap.styleRpr);
+        setNumPr(doc, p, childNumId);
+        continue;
+      }
+    }
+    if (!section && /^[（(]\d+[）)]/.test(text)) {
+      if (!bodyNumId) bodyNumId = cloneNum(numberingDoc, absParenId);
       setParagraphStyle(doc, p, styleIds.body);
       cleanPPr(p);
       paintRuns(doc, p, styleIds.body, styleMap.styleRpr);
@@ -743,7 +986,7 @@ function processReview(options) {
       continue;
     }
     if (!section && /^[①②③④⑤⑥⑦⑧⑨⑩]/.test(text)) {
-      if (!bodyCircledNumId) bodyCircledNumId = cloneNum(numberingDoc, 10);
+      if (!bodyCircledNumId) bodyCircledNumId = cloneNum(numberingDoc, absCircledId);
       setParagraphStyle(doc, p, styleIds.body);
       cleanPPr(p);
       paintRuns(doc, p, styleIds.body, styleMap.styleRpr);
