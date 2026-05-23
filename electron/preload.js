@@ -49,4 +49,10 @@ contextBridge.exposeInMainWorld('writemaster', {
   loadTempStyles() {
     return ipcRenderer.invoke('writemaster:load-temp-styles');
   },
+  checkPandoc(explicitPath) {
+    return ipcRenderer.invoke('writemaster:check-pandoc', { explicitPath });
+  },
+  installPandoc() {
+    return ipcRenderer.invoke('writemaster:install-pandoc');
+  },
 });

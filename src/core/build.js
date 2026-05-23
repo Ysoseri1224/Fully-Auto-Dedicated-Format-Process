@@ -3,14 +3,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { processReview, resolveMasterPath } = require('./review');
-
-function resolvePandocPath(explicitPath) {
-  if (explicitPath) return explicitPath;
-  if (process.env.WRITEMASTER_PANDOC) return process.env.WRITEMASTER_PANDOC;
-  const windowsPandoc = 'D:\\Pandoc\\pandoc.exe';
-  if (fs.existsSync(windowsPandoc)) return windowsPandoc;
-  return 'pandoc';
-}
+const { resolvePandocPath } = require('./pandoc');
 
 function defaultBackupMdPath(mdPath) {
   const dir = path.dirname(mdPath);

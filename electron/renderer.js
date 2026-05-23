@@ -1034,6 +1034,29 @@ async function refreshMasters() {
 }
 
 async function runTask() {
+  if (state.mode === 'md') {
+    const check = await window.writemaster.checkPandoc(state.pandocPath.trim() || undefined);
+    if (!check.available) {
+      const install = window.confirm(
+        '未检测到 Pandoc。Markdown 模式需要 Pandoc 才能运行。\n\n是否自动下载安装到本地？\n（约 40MB，来源：GitHub Releases）'
+      );
+      if (install) {
+        setRunState('running', '正在下载 Pandoc...');
+        const result = await window.writemaster.installPandoc();
+        if (result.ok) {
+          state.pandocPath = result.path;
+          showToast('Pandoc 安装完成');
+        } else {
+          setRunState('error', `Pandoc 下载失败：${result.error}\n\n请手动安装：https://pandoc.org/installing.html`);
+          return;
+        }
+      } else {
+        setRunState('error', 'Pandoc 未安装。请手动下载：https://pandoc.org/installing.html\n或在「Pandoc 路径」中指定已有路径。');
+        return;
+      }
+    }
+  }
+
   setRunState('running', 'Processing...');
   const payload = {
     mode: state.mode,

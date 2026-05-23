@@ -119,6 +119,14 @@ function main(argv = process.argv.slice(2)) {
 
   const outputPath = buildOutputPath(args.input, args.mode, args.name, args.out);
   if (args.mode === 'md') {
+    const { isPandocAvailable } = require('./core/pandoc');
+    const check = isPandocAvailable(args.pandoc);
+    if (!check.available) {
+      console.error('Error: Pandoc not found.');
+      console.error('Markdown mode requires Pandoc. Install it from: https://pandoc.org/installing.html');
+      console.error('Or specify path with: --pandoc <path>');
+      process.exit(1);
+    }
     buildFromMarkdown({
       mdPath: args.input,
       outputPath,

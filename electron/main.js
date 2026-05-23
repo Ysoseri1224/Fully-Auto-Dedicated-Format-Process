@@ -250,6 +250,21 @@ ipcMain.handle('writemaster:load-temp-styles', async () => {
   }
 });
 
+ipcMain.handle('writemaster:check-pandoc', async (_, { explicitPath }) => {
+  const { isPandocAvailable } = require('../src/core/pandoc');
+  return isPandocAvailable(explicitPath || undefined);
+});
+
+ipcMain.handle('writemaster:install-pandoc', async () => {
+  try {
+    const { downloadPandoc } = require('../src/core/pandoc');
+    const pandocPath = await downloadPandoc();
+    return { ok: true, path: pandocPath };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
 app.whenReady().then(() => {
   createWindow();
   app.on('activate', () => {
