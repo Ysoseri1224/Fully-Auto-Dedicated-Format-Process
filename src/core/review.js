@@ -412,11 +412,12 @@ function patchHeadingStyles(targetZip) {
   const styles = stylesDoc.getElementsByTagNameNS(W_NS, 'style');
   for (let i = 0; i < styles.length; i++) {
     const id = styles[i].getAttribute('w:styleId');
-    if (id !== '2' && id !== '3') continue;
+    if (id !== '1' && id !== '2' && id !== '3') continue;
     const pPr = styles[i].getElementsByTagNameNS(W_NS, 'pPr')[0];
     if (!pPr) continue;
     const numPr = pPr.getElementsByTagNameNS(W_NS, 'numPr')[0];
     if (numPr) pPr.removeChild(numPr);
+    if (id === '1') continue;
     let spacing = pPr.getElementsByTagNameNS(W_NS, 'spacing')[0];
     if (!spacing) {
       spacing = stylesDoc.createElementNS(W_NS, 'w:spacing');
@@ -972,23 +973,27 @@ function processReview(options) {
   const absCircledId = findOrCreateAbstractNum(numberingDoc, 'decimalEnclosedCircleChinese', '%1　');
 
   // Fix orphaned numPr: Pandoc-generated numIds lost after master copy
-  const validNumIds = new Set();
+  const validNumIds = new Set(['0']);
   const numEls = numberingDoc.getElementsByTagNameNS(W_NS, 'num');
   for (let i = 0; i < numEls.length; i++) validNumIds.add(numEls[i].getAttribute('w:numId'));
   let orphanDotNumId = null;
+  let prevWasOrphan = false;
   for (const p of paras) {
     const pPr = p.getElementsByTagNameNS(W_NS, 'pPr')[0];
-    if (!pPr) continue;
+    if (!pPr) { prevWasOrphan = false; continue; }
     const numPr = pPr.getElementsByTagNameNS(W_NS, 'numPr')[0];
-    if (!numPr) continue;
+    if (!numPr) { prevWasOrphan = false; continue; }
     const numIdEl = numPr.getElementsByTagNameNS(W_NS, 'numId')[0];
-    if (!numIdEl) continue;
+    if (!numIdEl) { prevWasOrphan = false; continue; }
     const nid = numIdEl.getAttribute('w:val');
     if (nid && !validNumIds.has(nid)) {
-      if (!orphanDotNumId) orphanDotNumId = cloneNum(numberingDoc, absDotId);
+      if (!prevWasOrphan) orphanDotNumId = cloneNum(numberingDoc, absDotId);
       numIdEl.setAttribute('w:val', String(orphanDotNumId));
       const indEl = pPr.getElementsByTagNameNS(W_NS, 'ind')[0];
       if (indEl) pPr.removeChild(indEl);
+      prevWasOrphan = true;
+    } else {
+      prevWasOrphan = false;
     }
   }
 
