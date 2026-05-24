@@ -42,6 +42,7 @@ const state = {
   reviewAuthSource: 'ccswitch',
   reviewApiKey: '',
   reviewBaseUrl: '',
+  reviewApiFormat: 'openai',
   reviewCCSwitchStatus: null,
   reviewSelectedSkills: ['anti-ai-review'],
   reviewStreaming: false,
@@ -1448,10 +1449,12 @@ function renderReviewAuthFields() {
   const keyRow = document.getElementById('reviewApiKeyRow');
   const urlRow = document.getElementById('reviewBaseUrlRow');
   const modelRow = document.getElementById('reviewModelRow');
+  const formatRow = document.getElementById('reviewFormatRow');
   if (ccRow) ccRow.classList.toggle('hidden', state.reviewAuthSource !== 'ccswitch');
   if (keyRow) keyRow.classList.toggle('hidden', state.reviewAuthSource !== 'manual');
   if (urlRow) urlRow.classList.toggle('hidden', state.reviewAuthSource !== 'manual');
   if (modelRow) modelRow.classList.toggle('hidden', state.reviewAuthSource !== 'manual');
+  if (formatRow) formatRow.classList.toggle('hidden', state.reviewAuthSource !== 'manual');
 }
 
 function renderReviewContent() {
@@ -1508,7 +1511,7 @@ async function refreshCCSwitchStatus() {
   state.reviewCCSwitchStatus = result.error ? null : result;
   const statusEl = document.getElementById('reviewCCSwitchStatus');
   if (statusEl) {
-    statusEl.textContent = result.error ? `读取失败: ${result.error}` : `${result.providerName} (${result.baseUrl})`;
+    statusEl.textContent = result.error ? `读取失败: ${result.error}` : `${result.providerName} [${result.format}] (${result.baseUrl})`;
     statusEl.classList.toggle('muted', !!result.error);
   }
 }
@@ -1533,17 +1536,19 @@ async function handleReviewStart() {
   if (!state.reviewFilePath) { showToast('请先上传文件'); return; }
   if (!window.writemaster.reviewStart) return;
 
-  let apiKey, baseUrl, model;
+  let apiKey, baseUrl, model, format;
   if (state.reviewAuthSource === 'ccswitch') {
     if (!state.reviewCCSwitchStatus) await refreshCCSwitchStatus();
     if (!state.reviewCCSwitchStatus) { showToast('无法读取 CC Switch 配置'); return; }
     apiKey = state.reviewCCSwitchStatus.apiKey;
     baseUrl = state.reviewCCSwitchStatus.baseUrl;
     model = state.reviewCCSwitchStatus.model || '';
+    format = state.reviewCCSwitchStatus.format || 'openai';
   } else {
     apiKey = document.getElementById('reviewApiKey').value.trim();
     baseUrl = document.getElementById('reviewBaseUrl').value.trim();
     model = (document.getElementById('reviewModel') || {}).value || '';
+    format = (document.getElementById('reviewApiFormat') || {}).value || 'openai';
     if (!apiKey) { showToast('请输入 API Key'); return; }
   }
 
@@ -1568,6 +1573,7 @@ async function handleReviewStart() {
     apiKey,
     baseUrl,
     model,
+    format,
     skillContent: mergedSkillContent,
     documentContent: state.reviewFileContent,
   });

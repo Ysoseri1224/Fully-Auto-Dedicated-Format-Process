@@ -348,32 +348,57 @@ ipcMain.handle('writemaster:review-load-skill-content', async (_, { skillId }) =
 
 let activeReviewReq = null;
 
-ipcMain.handle('writemaster:review-start', async (event, { apiKey, baseUrl, model, skillContent, documentContent }) => {
+ipcMain.handle('writemaster:review-start', async (event, { apiKey, baseUrl, model, format, skillContent, documentContent }) => {
   const https = require('https');
   const http = require('http');
   const { URL } = require('url');
   const win = BrowserWindow.fromWebContents(event.sender);
 
-  const body = JSON.stringify({
-    model: model || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
-    max_tokens: 8192,
-    stream: true,
-    system: skillContent,
-    messages: [{ role: 'user', content: `请审阅以下文稿并生成详细的审阅报告（markdown 格式）：\n\n${documentContent}` }],
-  });
+  const apiFormat = format || 'openai';
+  const resolvedModel = model || process.env.ANTHROPIC_MODEL || process.env.OPENAI_MODEL || 'gpt-4o';
+  const userMessage = `请审阅以下文稿并生成详细的审阅报告（markdown 格式）：\n\n${documentContent}`;
 
-  const url = new URL(baseUrl.replace(/\/$/, '') + '/v1/messages');
+  let body, endpoint, headers;
+
+  if (apiFormat === 'anthropic') {
+    endpoint = baseUrl.replace(/\/$/, '') + '/v1/messages';
+    headers = {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    };
+    body = JSON.stringify({
+      model: resolvedModel,
+      max_tokens: 8192,
+      stream: true,
+      system: skillContent,
+      messages: [{ role: 'user', content: userMessage }],
+    });
+  } else {
+    endpoint = baseUrl.replace(/\/$/, '') + '/v1/chat/completions';
+    headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    };
+    body = JSON.stringify({
+      model: resolvedModel,
+      max_tokens: 8192,
+      stream: true,
+      messages: [
+        { role: 'system', content: skillContent },
+        { role: 'user', content: userMessage },
+      ],
+    });
+  }
+
+  const url = new URL(endpoint);
   const isHttps = url.protocol === 'https:';
   const options = {
     hostname: url.hostname,
     port: url.port || (isHttps ? 443 : 80),
-    path: url.pathname,
+    path: url.pathname + (url.search || ''),
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
+    headers,
   };
 
   const transport = isHttps ? https : http;
@@ -402,11 +427,21 @@ ipcMain.handle('writemaster:review-start', async (event, { apiKey, baseUrl, mode
         }
         try {
           const parsed = JSON.parse(data);
-          if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.text) {
-            if (win && !win.isDestroyed()) win.webContents.send('writemaster:review-stream-chunk', parsed.delta.text);
-          }
-          if (parsed.type === 'message_stop') {
-            if (win && !win.isDestroyed()) win.webContents.send('writemaster:review-stream-done');
+          if (apiFormat === 'anthropic') {
+            if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.text) {
+              if (win && !win.isDestroyed()) win.webContents.send('writemaster:review-stream-chunk', parsed.delta.text);
+            }
+            if (parsed.type === 'message_stop') {
+              if (win && !win.isDestroyed()) win.webContents.send('writemaster:review-stream-done');
+            }
+          } else {
+            const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
+            if (delta && delta.content) {
+              if (win && !win.isDestroyed()) win.webContents.send('writemaster:review-stream-chunk', delta.content);
+            }
+            if (parsed.choices && parsed.choices[0] && parsed.choices[0].finish_reason) {
+              if (win && !win.isDestroyed()) win.webContents.send('writemaster:review-stream-done');
+            }
           }
         } catch (e) {}
       }

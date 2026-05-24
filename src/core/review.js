@@ -410,32 +410,30 @@ function patchHeadingStyles(targetZip) {
   if (!stylesXml) return;
   const stylesDoc = parseXml(stylesXml);
   const styles = stylesDoc.getElementsByTagNameNS(W_NS, 'style');
+  const headingSizes = { '1': '32', '2': '28', '3': '24' };
   for (let i = 0; i < styles.length; i++) {
     const id = styles[i].getAttribute('w:styleId');
     if (id !== '1' && id !== '2' && id !== '3') continue;
     const pPr = styles[i].getElementsByTagNameNS(W_NS, 'pPr')[0];
-    if (!pPr) continue;
-    const numPr = pPr.getElementsByTagNameNS(W_NS, 'numPr')[0];
-    if (numPr) pPr.removeChild(numPr);
-    if (id === '1') continue;
-    let spacing = pPr.getElementsByTagNameNS(W_NS, 'spacing')[0];
-    if (!spacing) {
-      spacing = stylesDoc.createElementNS(W_NS, 'w:spacing');
-      pPr.appendChild(spacing);
-    }
-    if (id === '2') {
-      spacing.setAttribute('w:before', '260');
-      spacing.setAttribute('w:after', '120');
-      spacing.setAttribute('w:line', '288');
-      spacing.setAttribute('w:lineRule', 'auto');
-      spacing.removeAttribute('w:beforeLines');
-      spacing.removeAttribute('w:afterLines');
-    }
-    if (id === '3') {
-      spacing.setAttribute('w:before', '260');
-      spacing.setAttribute('w:after', '120');
-      spacing.setAttribute('w:line', '288');
-      spacing.setAttribute('w:lineRule', 'auto');
+    if (pPr) {
+      const numPr = pPr.getElementsByTagNameNS(W_NS, 'numPr')[0];
+      if (numPr) pPr.removeChild(numPr);
+      let spacing = pPr.getElementsByTagNameNS(W_NS, 'spacing')[0];
+      if (!spacing) {
+        spacing = stylesDoc.createElementNS(W_NS, 'w:spacing');
+        pPr.appendChild(spacing);
+      }
+      if (id === '1') {
+        spacing.setAttribute('w:before', '340');
+        spacing.setAttribute('w:after', '160');
+        spacing.setAttribute('w:line', '288');
+        spacing.setAttribute('w:lineRule', 'auto');
+      } else {
+        spacing.setAttribute('w:before', '260');
+        spacing.setAttribute('w:after', '120');
+        spacing.setAttribute('w:line', '288');
+        spacing.setAttribute('w:lineRule', 'auto');
+      }
       spacing.removeAttribute('w:beforeLines');
       spacing.removeAttribute('w:afterLines');
     }
@@ -446,17 +444,17 @@ function patchHeadingStyles(targetZip) {
     }
     while (rPr.firstChild) rPr.removeChild(rPr.firstChild);
     const rFonts = stylesDoc.createElementNS(W_NS, 'w:rFonts');
-    rFonts.setAttribute('w:ascii', '等线');
-    rFonts.setAttribute('w:eastAsia', '等线');
-    rFonts.setAttribute('w:hAnsi', '等线');
+    rFonts.setAttribute('w:ascii', '黑体');
+    rFonts.setAttribute('w:eastAsia', '黑体');
+    rFonts.setAttribute('w:hAnsi', '黑体');
     rPr.appendChild(rFonts);
     rPr.appendChild(stylesDoc.createElementNS(W_NS, 'w:b'));
     rPr.appendChild(stylesDoc.createElementNS(W_NS, 'w:bCs'));
     const sz = stylesDoc.createElementNS(W_NS, 'w:sz');
-    sz.setAttribute('w:val', id === '2' ? '30' : '24');
+    sz.setAttribute('w:val', headingSizes[id]);
     rPr.appendChild(sz);
     const szCs = stylesDoc.createElementNS(W_NS, 'w:szCs');
-    szCs.setAttribute('w:val', id === '2' ? '30' : '24');
+    szCs.setAttribute('w:val', headingSizes[id]);
     rPr.appendChild(szCs);
   }
   targetZip.file('word/styles.xml', serializeXml(stylesDoc));
@@ -493,6 +491,34 @@ function buildStyleMap(zip) {
   return { stylesDoc, nameToId, styleRpr, docDefaultsRpr, docDefaultsPpr };
 }
 
+const HEADING_SIZES = { '1': '32', '2': '28', '3': '24' };
+
+function paintHeadingRuns(doc, pEl, headingId) {
+  const szVal = HEADING_SIZES[headingId];
+  const runs = pEl.getElementsByTagNameNS(W_NS, 'r');
+  for (let i = 0; i < runs.length; i++) {
+    const r = runs[i];
+    if (r.parentNode !== pEl) continue;
+    const existing = r.getElementsByTagNameNS(W_NS, 'rPr')[0];
+    if (existing) r.removeChild(existing);
+    const rPr = doc.createElementNS(W_NS, 'w:rPr');
+    const rFonts = doc.createElementNS(W_NS, 'w:rFonts');
+    rFonts.setAttribute('w:ascii', '黑体');
+    rFonts.setAttribute('w:eastAsia', '黑体');
+    rFonts.setAttribute('w:hAnsi', '黑体');
+    rPr.appendChild(rFonts);
+    rPr.appendChild(doc.createElementNS(W_NS, 'w:b'));
+    rPr.appendChild(doc.createElementNS(W_NS, 'w:bCs'));
+    const sz = doc.createElementNS(W_NS, 'w:sz');
+    sz.setAttribute('w:val', szVal);
+    rPr.appendChild(sz);
+    const szCs = doc.createElementNS(W_NS, 'w:szCs');
+    szCs.setAttribute('w:val', szVal);
+    rPr.appendChild(szCs);
+    r.insertBefore(rPr, r.firstChild);
+  }
+}
+
 function paintRuns(doc, pEl, styleId, styleRpr) {
   const tpl = styleRpr[styleId];
   const runs = pEl.getElementsByTagNameNS(W_NS, 'r');
@@ -506,15 +532,24 @@ function paintRuns(doc, pEl, styleId, styleRpr) {
       if (va) vertAlign = va.cloneNode(true);
       r.removeChild(existing);
     }
+    let rPr;
     if (tpl) {
-      const newRpr = importNode(doc, tpl);
-      if (vertAlign) newRpr.appendChild(vertAlign);
-      r.insertBefore(newRpr, r.firstChild);
-    } else if (vertAlign) {
-      const newRpr = doc.createElementNS(W_NS, 'w:rPr');
-      newRpr.appendChild(vertAlign);
-      r.insertBefore(newRpr, r.firstChild);
+      rPr = importNode(doc, tpl);
+      if (vertAlign) rPr.appendChild(vertAlign);
+    } else {
+      rPr = doc.createElementNS(W_NS, 'w:rPr');
+      if (vertAlign) rPr.appendChild(vertAlign);
     }
+    // Force body fonts: 宋体 for Chinese, Times New Roman for Latin
+    let rFonts = rPr.getElementsByTagNameNS(W_NS, 'rFonts')[0];
+    if (!rFonts) {
+      rFonts = doc.createElementNS(W_NS, 'w:rFonts');
+      rPr.insertBefore(rFonts, rPr.firstChild);
+    }
+    rFonts.setAttribute('w:ascii', 'Times New Roman');
+    rFonts.setAttribute('w:hAnsi', 'Times New Roman');
+    rFonts.setAttribute('w:eastAsia', '宋体');
+    r.insertBefore(rPr, r.firstChild);
   }
 }
 
@@ -559,15 +594,24 @@ function makeRun(doc, text, styleId, styleRpr, bold = false) {
   const r = doc.createElementNS(W_NS, 'w:r');
   const tpl = styleRpr[styleId];
   if (tpl) r.appendChild(importNode(doc, tpl));
+  let rPr = r.getElementsByTagNameNS(W_NS, 'rPr')[0];
+  if (!rPr) {
+    rPr = doc.createElementNS(W_NS, 'w:rPr');
+    r.insertBefore(rPr, r.firstChild);
+  }
   if (bold) {
-    let rPr = r.getElementsByTagNameNS(W_NS, 'rPr')[0];
-    if (!rPr) {
-      rPr = doc.createElementNS(W_NS, 'w:rPr');
-      r.insertBefore(rPr, r.firstChild);
-    }
     rPr.appendChild(doc.createElementNS(W_NS, 'w:b'));
     rPr.appendChild(doc.createElementNS(W_NS, 'w:bCs'));
   }
+  // Force body fonts: 宋体 for Chinese, Times New Roman for Latin
+  let rFonts = rPr.getElementsByTagNameNS(W_NS, 'rFonts')[0];
+  if (!rFonts) {
+    rFonts = doc.createElementNS(W_NS, 'w:rFonts');
+    rPr.insertBefore(rFonts, rPr.firstChild);
+  }
+  rFonts.setAttribute('w:ascii', 'Times New Roman');
+  rFonts.setAttribute('w:hAnsi', 'Times New Roman');
+  rFonts.setAttribute('w:eastAsia', '宋体');
   const t = doc.createElementNS(W_NS, 'w:t');
   t.appendChild(doc.createTextNode(text));
   r.appendChild(t);
@@ -923,6 +967,7 @@ function processReview(options) {
       cleanPPr(child);
       if (targetStyle === '1' || targetStyle === '2' || targetStyle === '3') {
         setNumPr(doc, child, 0);
+        paintHeadingRuns(doc, child, targetStyle);
       } else {
         paintRuns(doc, child, targetStyle, styleMap.styleRpr);
       }

@@ -700,7 +700,15 @@
                   </div>
                   <div class="form-grid hidden" id="reviewModelRow">
                     <label>模型</label>
-                    <input id="reviewModel" placeholder="claude-sonnet-4-20250514" />
+                    <input id="reviewModel" placeholder="gpt-4o" />
+                    <span></span>
+                  </div>
+                  <div class="form-grid hidden" id="reviewFormatRow">
+                    <label>API 格式</label>
+                    <select id="reviewApiFormat">
+                      <option value="openai">OpenAI 兼容</option>
+                      <option value="anthropic">Anthropic</option>
+                    </select>
                     <span></span>
                   </div>
                   <div class="form-grid">
