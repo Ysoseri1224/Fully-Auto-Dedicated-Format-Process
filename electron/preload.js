@@ -55,4 +55,38 @@ contextBridge.exposeInMainWorld('writemaster', {
   installPandoc() {
     return ipcRenderer.invoke('writemaster:install-pandoc');
   },
+  // Review feature
+  reviewPickFile() {
+    return ipcRenderer.invoke('writemaster:review-pick-file');
+  },
+  reviewReadFile(filePath, fileType) {
+    return ipcRenderer.invoke('writemaster:review-read-file', { filePath, fileType });
+  },
+  reviewReadCCSwitch() {
+    return ipcRenderer.invoke('writemaster:review-read-ccswitch');
+  },
+  reviewLoadSkills() {
+    return ipcRenderer.invoke('writemaster:review-load-skills');
+  },
+  reviewLoadSkillContent(skillId) {
+    return ipcRenderer.invoke('writemaster:review-load-skill-content', { skillId });
+  },
+  reviewStart(payload) {
+    return ipcRenderer.invoke('writemaster:review-start', payload);
+  },
+  reviewStop() {
+    return ipcRenderer.invoke('writemaster:review-stop');
+  },
+  reviewSaveReport(content) {
+    return ipcRenderer.invoke('writemaster:review-save-report', content);
+  },
+  onReviewChunk(callback) {
+    ipcRenderer.on('writemaster:review-stream-chunk', (_, text) => callback(text));
+  },
+  onReviewDone(callback) {
+    ipcRenderer.on('writemaster:review-stream-done', () => callback());
+  },
+  onReviewError(callback) {
+    ipcRenderer.on('writemaster:review-stream-error', (_, err) => callback(err));
+  },
 });

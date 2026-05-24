@@ -421,6 +421,22 @@
         .app { grid-template-columns: 240px minmax(540px, 1fr) 360px; }
         .page { width: auto; margin: 0 24px; }
       }
+      .md-rendered { font-size: 15px; line-height: 1.8; color: var(--ink); }
+      .md-rendered h1 { font-size: 22px; font-weight: 700; margin: 24px 0 12px; }
+      .md-rendered h2 { font-size: 18px; font-weight: 700; margin: 20px 0 10px; }
+      .md-rendered h3 { font-size: 16px; font-weight: 700; margin: 16px 0 8px; }
+      .md-rendered p { margin: 8px 0; }
+      .md-rendered code { background: #f0f4f8; padding: 2px 6px; border-radius: 3px; font-family: Consolas, monospace; font-size: 13px; }
+      .md-rendered pre { background: #f5f7fa; border: 1px solid var(--line); border-radius: 6px; padding: 14px; overflow-x: auto; margin: 12px 0; }
+      .md-rendered pre code { background: none; padding: 0; }
+      .md-rendered blockquote { border-left: 4px solid var(--accent); padding: 8px 16px; margin: 12px 0; background: #f8fafc; }
+      .md-rendered table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+      .md-rendered th, .md-rendered td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; }
+      .md-rendered th { background: #f0f4f8; font-weight: 600; }
+      .md-rendered ul, .md-rendered ol { padding-left: 24px; margin: 8px 0; }
+      .md-rendered li { margin: 4px 0; }
+      .md-rendered hr { border: none; border-top: 1px solid var(--line); margin: 20px 0; }
+      .review-streaming-indicator { display: inline-block; padding: 4px 10px; background: var(--accent); color: #fff; border-radius: 4px; font-size: 12px; margin-bottom: 12px; }
     </style>
   </head>
   <body>
@@ -441,6 +457,10 @@
           <div class="nav-item" data-view-target="config-view">
             <div class="nav-title">Profile 配置</div>
             <div class="nav-sub">查看当前模板摘要</div>
+          </div>
+          <div class="nav-item" data-view-target="review-view">
+            <div class="nav-title">文稿审阅</div>
+            <div class="nav-sub">AI 辅助学术文稿审阅</div>
           </div>
         </div>
 
@@ -476,6 +496,7 @@
             <button class="tab active" data-view-target="landing-view">应用任务</button>
             <button class="tab" data-view-target="template-view">模板提取</button>
             <button class="tab" data-view-target="config-view">Profile 配置</button>
+            <button class="tab" data-view-target="review-view">文稿审阅</button>
           </div>
           <div class="tag" id="toolbarMasterTag">当前母版：review-master</div>
           <button class="button secondary" id="importOtherTemplate" style="display:none;font-size:12px;padding:5px 12px;">导入其他文件作为模板</button>
@@ -648,9 +669,75 @@
               </div>
             </div>
           </section>
-        </div>
 
-        <div class="statusbar">
+          <section class="view" id="review-view">
+            <div style="display:flex;flex-direction:column;height:100%;">
+              <details class="profile-gen-sticky" id="reviewConfigPanel">
+                <summary style="cursor:pointer;font-size:14px;font-weight:600;padding:10px 0;">AI 审阅配置</summary>
+                <div style="padding:8px 0 0;">
+                  <div class="form-grid">
+                    <label>认证来源</label>
+                    <select id="reviewAuthSource">
+                      <option value="ccswitch">从 CC Switch 读取</option>
+                      <option value="manual">手动输入 API Key</option>
+                    </select>
+                    <span></span>
+                  </div>
+                  <div class="form-grid" id="reviewCCSwitchRow">
+                    <label>CC Switch</label>
+                    <span id="reviewCCSwitchStatus" class="muted">未检测</span>
+                    <button class="button secondary" id="reviewRefreshCCSwitch" style="padding:4px 10px;font-size:12px;">刷新</button>
+                  </div>
+                  <div class="form-grid hidden" id="reviewApiKeyRow">
+                    <label>API Key</label>
+                    <input id="reviewApiKey" type="password" placeholder="sk-..." />
+                    <span></span>
+                  </div>
+                  <div class="form-grid hidden" id="reviewBaseUrlRow">
+                    <label>中转站 URL</label>
+                    <input id="reviewBaseUrl" placeholder="https://nowcoding.ai" />
+                    <span></span>
+                  </div>
+                  <div class="form-grid">
+                    <label>审阅技能</label>
+                    <select id="reviewSkillSelect">
+                      <option value="anti-ai-review">去AI痕迹审阅 (中文)</option>
+                      <option value="nature-polishing">学术润色 (English)</option>
+                      <option value="nature-writing">学术写作 (English)</option>
+                    </select>
+                    <span></span>
+                  </div>
+                  <div style="display:flex;gap:8px;margin-top:12px;">
+                    <button class="button" id="reviewStartBtn">开始审阅</button>
+                    <button class="button secondary hidden" id="reviewStopBtn">停止</button>
+                  </div>
+                </div>
+              </details>
+
+              <div style="display:flex;gap:4px;padding:8px 24px;border-bottom:1px solid var(--line);background:#fff;">
+                <button class="tab active" data-review-tab="content">文稿内容</button>
+                <button class="tab" data-review-tab="report">审阅报告</button>
+              </div>
+
+              <div style="flex:1;min-height:0;overflow:hidden;position:relative;">
+                <div id="review-content-panel" class="preview-wrap" style="height:100%;overflow-y:auto;padding:24px;">
+                  <div id="reviewContentPage">
+                    <div style="text-align:center;padding:60px 40px;">
+                      <h3 style="margin:0 0 12px;font-weight:600;">文稿审阅</h3>
+                      <div class="muted" style="margin:16px 0;">上传 Markdown 或 DOCX 文件开始审阅</div>
+                      <button class="button" id="reviewPickFile">选择文件</button>
+                    </div>
+                  </div>
+                </div>
+                <div id="review-report-panel" class="preview-wrap" style="height:100%;overflow-y:auto;padding:24px;display:none;">
+                  <div id="reviewReportPage">
+                    <div class="muted" style="padding:40px;text-align:center;">尚未生成审阅报告。配置 AI 后点击「开始审阅」。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
           <span id="statusLeft">当前视图：应用任务</span>
           <span id="statusMid">默认模板：review-master</span>
           <span id="statusRight">尚未生成输出</span>
@@ -746,6 +833,7 @@
       <div class="context-item" data-role="ignore">忽略该块</div>
     </div>
 
+    <script src="./lib/marked.min.js"></script>
     <script src="./renderer.js"></script>
   </body>
   </html>

@@ -265,6 +265,185 @@ ipcMain.handle('writemaster:install-pandoc', async () => {
   }
 });
 
+// --- Review feature IPC ---
+
+ipcMain.handle('writemaster:review-pick-file', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [{ name: 'Documents', extensions: ['md', 'docx'] }],
+  });
+  if (result.canceled || !result.filePaths.length) return null;
+  const filePath = result.filePaths[0];
+  const ext = path.extname(filePath).toLowerCase();
+  return { filePath, fileType: ext === '.md' ? 'md' : 'docx' };
+});
+
+ipcMain.handle('writemaster:review-read-file', async (_, { filePath, fileType }) => {
+  try {
+    if (fileType === 'md') {
+      const content = fs.readFileSync(filePath, 'utf8');
+      return { ok: true, content, blocks: null };
+    }
+    const { extractBlocks } = require('../src/core/extract');
+    const result = extractBlocks(filePath);
+    const plainText = (result.blocks || [])
+      .filter((b) => b.text)
+      .map((b) => b.text)
+      .join('\n');
+    return { ok: true, content: plainText, blocks: result.blocks };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('writemaster:review-read-ccswitch', async () => {
+  const { readCCSwitchConfig } = require('../src/core/cc-switch');
+  return readCCSwitchConfig();
+});
+
+ipcMain.handle('writemaster:review-load-skills', async () => {
+  const skillsDir = path.join(__dirname, '..', 'ContRev');
+  if (!fs.existsSync(skillsDir)) return [];
+  const skills = [];
+  for (const dir of fs.readdirSync(skillsDir)) {
+    const skillPath = path.join(skillsDir, dir, 'SKILL.md');
+    if (!fs.existsSync(skillPath)) continue;
+    const raw = fs.readFileSync(skillPath, 'utf8');
+    const match = raw.match(/^---\n([\s\S]*?)\n---/);
+    const meta = {};
+    if (match) {
+      for (const line of match[1].split('\n')) {
+        const idx = line.indexOf(':');
+        if (idx > 0) meta[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+      }
+    }
+    skills.push({ id: dir, name: meta.name || dir, description: meta.description || '' });
+  }
+  return skills;
+});
+
+ipcMain.handle('writemaster:review-load-skill-content', async (_, { skillId }) => {
+  const skillDir = path.join(__dirname, '..', 'ContRev', skillId);
+  const skillPath = path.join(skillDir, 'SKILL.md');
+  if (!fs.existsSync(skillPath)) return { ok: false, error: 'Skill not found' };
+  let content = fs.readFileSync(skillPath, 'utf8');
+  const refsDir = path.join(skillDir, 'references');
+  if (fs.existsSync(refsDir)) {
+    const walk = (dir) => {
+      let files = [];
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) files = files.concat(walk(full));
+        else if (entry.name.endsWith('.md')) files.push(full);
+      }
+      return files;
+    };
+    for (const refFile of walk(refsDir)) {
+      const rel = path.relative(skillDir, refFile);
+      content += `\n\n---\n## Reference: ${rel}\n\n${fs.readFileSync(refFile, 'utf8')}`;
+    }
+  }
+  return { ok: true, content };
+});
+
+let activeReviewReq = null;
+
+ipcMain.handle('writemaster:review-start', async (event, { apiKey, baseUrl, skillContent, documentContent }) => {
+  const https = require('https');
+  const http = require('http');
+  const { URL } = require('url');
+  const win = BrowserWindow.fromWebContents(event.sender);
+
+  const body = JSON.stringify({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 8192,
+    stream: true,
+    system: skillContent,
+    messages: [{ role: 'user', content: `请审阅以下文稿并生成详细的审阅报告（markdown 格式）：\n\n${documentContent}` }],
+  });
+
+  const url = new URL(baseUrl.replace(/\/$/, '') + '/v1/messages');
+  const isHttps = url.protocol === 'https:';
+  const options = {
+    hostname: url.hostname,
+    port: url.port || (isHttps ? 443 : 80),
+    path: url.pathname,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+  };
+
+  const transport = isHttps ? https : http;
+  const req = transport.request(options, (res) => {
+    if (res.statusCode !== 200) {
+      let errBody = '';
+      res.on('data', (c) => { errBody += c; });
+      res.on('end', () => {
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('writemaster:review-stream-error', `HTTP ${res.statusCode}: ${errBody.slice(0, 200)}`);
+        }
+      });
+      return;
+    }
+    let buffer = '';
+    res.on('data', (chunk) => {
+      buffer += chunk.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') {
+          if (win && !win.isDestroyed()) win.webContents.send('writemaster:review-stream-done');
+          return;
+        }
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.text) {
+            if (win && !win.isDestroyed()) win.webContents.send('writemaster:review-stream-chunk', parsed.delta.text);
+          }
+          if (parsed.type === 'message_stop') {
+            if (win && !win.isDestroyed()) win.webContents.send('writemaster:review-stream-done');
+          }
+        } catch (e) {}
+      }
+    });
+    res.on('end', () => {
+      if (win && !win.isDestroyed()) win.webContents.send('writemaster:review-stream-done');
+    });
+  });
+
+  req.on('error', (err) => {
+    if (win && !win.isDestroyed()) win.webContents.send('writemaster:review-stream-error', err.message);
+  });
+
+  activeReviewReq = req;
+  req.write(body);
+  req.end();
+  return { ok: true };
+});
+
+ipcMain.handle('writemaster:review-stop', async () => {
+  if (activeReviewReq) {
+    activeReviewReq.destroy();
+    activeReviewReq = null;
+  }
+  return { ok: true };
+});
+
+ipcMain.handle('writemaster:review-save-report', async (_, content) => {
+  const result = await dialog.showSaveDialog({
+    defaultPath: 'review-report.md',
+    filters: [{ name: 'Markdown', extensions: ['md'] }],
+  });
+  if (result.canceled || !result.filePath) return { ok: false };
+  fs.writeFileSync(result.filePath, content, 'utf8');
+  return { ok: true, filePath: result.filePath };
+});
+
 app.whenReady().then(() => {
   createWindow();
   app.on('activate', () => {

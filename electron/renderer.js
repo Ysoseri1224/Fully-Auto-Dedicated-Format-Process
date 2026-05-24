@@ -33,6 +33,20 @@ const state = {
   recentMasters: [],
   // Saved temp styles
   savedTempStyles: [],
+  // Review state
+  reviewSubTab: 'content',
+  reviewFilePath: '',
+  reviewFileType: '',
+  reviewFileContent: '',
+  reviewBlocks: [],
+  reviewAuthSource: 'ccswitch',
+  reviewApiKey: '',
+  reviewBaseUrl: '',
+  reviewCCSwitchStatus: null,
+  reviewSelectedSkill: 'anti-ai-review',
+  reviewStreaming: false,
+  reviewStreamChunks: '',
+  reviewReportMarkdown: '',
 };
 
 const CUSTOM_MASTER_ID = '__custom__';
@@ -72,6 +86,11 @@ const viewMeta = {
     title: 'Profile 配置',
     mode: '模板配置',
     type: '摘要视图',
+  },
+  'review-view': {
+    title: '文稿审阅',
+    mode: '审阅',
+    type: 'AI',
   },
 };
 
@@ -172,6 +191,9 @@ function getCurrentMasterLabel() {
 
 function setActiveView(viewId) {
   state.activeView = viewId;
+  if (viewId === 'review-view' && !state.reviewCCSwitchStatus) {
+    refreshCCSwitchStatus();
+  }
   render();
 }
 
@@ -1332,6 +1354,49 @@ function bindEvents() {
     showToast(`已保存临时样式「${name}」`);
     render();
   });
+
+  // --- Review view bindings ---
+  document.querySelectorAll('[data-review-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.reviewSubTab = btn.dataset.reviewTab;
+      renderReviewSubTabs();
+    });
+  });
+
+  const reviewAuthSource = document.getElementById('reviewAuthSource');
+  if (reviewAuthSource) {
+    reviewAuthSource.addEventListener('change', () => {
+      state.reviewAuthSource = reviewAuthSource.value;
+      renderReviewAuthFields();
+    });
+  }
+
+  const reviewSkillSelect = document.getElementById('reviewSkillSelect');
+  if (reviewSkillSelect) {
+    reviewSkillSelect.addEventListener('change', () => {
+      state.reviewSelectedSkill = reviewSkillSelect.value;
+    });
+  }
+
+  const reviewPickFile = document.getElementById('reviewPickFile');
+  if (reviewPickFile) {
+    reviewPickFile.addEventListener('click', handleReviewPickFile);
+  }
+
+  const reviewStartBtn = document.getElementById('reviewStartBtn');
+  if (reviewStartBtn) {
+    reviewStartBtn.addEventListener('click', handleReviewStart);
+  }
+
+  const reviewStopBtn = document.getElementById('reviewStopBtn');
+  if (reviewStopBtn) {
+    reviewStopBtn.addEventListener('click', handleReviewStop);
+  }
+
+  const reviewRefreshCCSwitch = document.getElementById('reviewRefreshCCSwitch');
+  if (reviewRefreshCCSwitch) {
+    reviewRefreshCCSwitch.addEventListener('click', refreshCCSwitchStatus);
+  }
 }
 
 async function loadMasterForExtract(sourcePathOrId) {
@@ -1363,6 +1428,190 @@ async function refreshProfiles() {
   if (result.ok) {
     state.profiles = result.profiles;
   }
+}
+
+// --- Review view functions ---
+
+function renderReviewSubTabs() {
+  document.querySelectorAll('[data-review-tab]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.reviewTab === state.reviewSubTab);
+  });
+  const contentPanel = document.getElementById('review-content-panel');
+  const reportPanel = document.getElementById('review-report-panel');
+  if (contentPanel) contentPanel.style.display = state.reviewSubTab === 'content' ? '' : 'none';
+  if (reportPanel) reportPanel.style.display = state.reviewSubTab === 'report' ? '' : 'none';
+}
+
+function renderReviewAuthFields() {
+  const ccRow = document.getElementById('reviewCCSwitchRow');
+  const keyRow = document.getElementById('reviewApiKeyRow');
+  const urlRow = document.getElementById('reviewBaseUrlRow');
+  if (ccRow) ccRow.classList.toggle('hidden', state.reviewAuthSource !== 'ccswitch');
+  if (keyRow) keyRow.classList.toggle('hidden', state.reviewAuthSource !== 'manual');
+  if (urlRow) urlRow.classList.toggle('hidden', state.reviewAuthSource !== 'manual');
+}
+
+function renderReviewContent() {
+  const page = document.getElementById('reviewContentPage');
+  if (!page || !state.reviewFilePath) return;
+  page.innerHTML = '';
+  if (state.reviewFileType === 'md') {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'md-rendered';
+    wrapper.innerHTML = typeof marked !== 'undefined' ? marked.parse(state.reviewFileContent) : state.reviewFileContent;
+    page.appendChild(wrapper);
+  } else if (state.reviewFileType === 'docx' && state.reviewBlocks.length) {
+    for (const block of state.reviewBlocks) {
+      const div = document.createElement('div');
+      div.className = 'block';
+      div.textContent = block.text || '';
+      page.appendChild(div);
+    }
+  }
+}
+
+function renderReviewReport() {
+  const page = document.getElementById('reviewReportPage');
+  if (!page) return;
+  const content = state.reviewStreaming ? state.reviewStreamChunks : state.reviewReportMarkdown;
+  if (!content) {
+    page.innerHTML = '<div class="muted" style="padding:40px;text-align:center;">尚未生成审阅报告。配置 AI 后点击「开始审阅」。</div>';
+    return;
+  }
+  page.innerHTML = '';
+  if (state.reviewStreaming) {
+    const indicator = document.createElement('div');
+    indicator.className = 'review-streaming-indicator';
+    indicator.textContent = '正在生成...';
+    page.appendChild(indicator);
+  }
+  const wrapper = document.createElement('div');
+  wrapper.className = 'md-rendered';
+  wrapper.innerHTML = typeof marked !== 'undefined' ? marked.parse(content) : content;
+  page.appendChild(wrapper);
+  if (!state.reviewStreaming && state.reviewReportMarkdown) {
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'button secondary';
+    exportBtn.textContent = '导出为 .md';
+    exportBtn.style.marginTop = '16px';
+    exportBtn.addEventListener('click', handleReviewExport);
+    page.appendChild(exportBtn);
+  }
+}
+
+async function refreshCCSwitchStatus() {
+  if (!window.writemaster.reviewReadCCSwitch) return;
+  const result = await window.writemaster.reviewReadCCSwitch();
+  state.reviewCCSwitchStatus = result.error ? null : result;
+  const statusEl = document.getElementById('reviewCCSwitchStatus');
+  if (statusEl) {
+    statusEl.textContent = result.error ? `读取失败: ${result.error}` : `${result.providerName} (${result.baseUrl})`;
+    statusEl.classList.toggle('muted', !!result.error);
+  }
+}
+
+async function handleReviewPickFile() {
+  if (!window.writemaster.reviewPickFile) return;
+  const result = await window.writemaster.reviewPickFile();
+  if (!result) return;
+  state.reviewFilePath = result.filePath;
+  state.reviewFileType = result.fileType;
+  const readResult = await window.writemaster.reviewReadFile(result.filePath, result.fileType);
+  if (readResult.ok) {
+    state.reviewFileContent = readResult.content;
+    state.reviewBlocks = readResult.blocks || [];
+    renderReviewContent();
+  } else {
+    showToast('文件读取失败: ' + readResult.error);
+  }
+}
+
+async function handleReviewStart() {
+  if (!state.reviewFilePath) { showToast('请先上传文件'); return; }
+  if (!window.writemaster.reviewStart) return;
+
+  let apiKey, baseUrl;
+  if (state.reviewAuthSource === 'ccswitch') {
+    if (!state.reviewCCSwitchStatus) await refreshCCSwitchStatus();
+    if (!state.reviewCCSwitchStatus) { showToast('无法读取 CC Switch 配置'); return; }
+    apiKey = state.reviewCCSwitchStatus.apiKey;
+    baseUrl = state.reviewCCSwitchStatus.baseUrl;
+  } else {
+    apiKey = document.getElementById('reviewApiKey').value.trim();
+    baseUrl = document.getElementById('reviewBaseUrl').value.trim();
+    if (!apiKey) { showToast('请输入 API Key'); return; }
+  }
+
+  const skillResult = await window.writemaster.reviewLoadSkillContent(state.reviewSelectedSkill);
+  if (!skillResult.ok) { showToast('加载技能失败: ' + skillResult.error); return; }
+
+  state.reviewSubTab = 'report';
+  state.reviewStreaming = true;
+  state.reviewStreamChunks = '';
+  state.reviewReportMarkdown = '';
+  renderReviewSubTabs();
+  renderReviewReport();
+  document.getElementById('reviewStopBtn').classList.remove('hidden');
+
+  const result = await window.writemaster.reviewStart({
+    apiKey,
+    baseUrl,
+    skillContent: skillResult.content,
+    documentContent: state.reviewFileContent,
+  });
+  if (!result.ok) {
+    state.reviewStreaming = false;
+    showToast('启动审阅失败: ' + result.error);
+    document.getElementById('reviewStopBtn').classList.add('hidden');
+    renderReviewReport();
+  }
+}
+
+async function handleReviewStop() {
+  if (window.writemaster.reviewStop) await window.writemaster.reviewStop();
+  state.reviewStreaming = false;
+  state.reviewReportMarkdown = state.reviewStreamChunks;
+  document.getElementById('reviewStopBtn').classList.add('hidden');
+  renderReviewReport();
+}
+
+async function handleReviewExport() {
+  if (!state.reviewReportMarkdown) return;
+  if (window.writemaster.reviewSaveReport) {
+    await window.writemaster.reviewSaveReport(state.reviewReportMarkdown);
+  }
+}
+
+// Streaming event listeners
+if (window.writemaster.onReviewChunk) {
+  let reviewRafPending = false;
+  window.writemaster.onReviewChunk((text) => {
+    state.reviewStreamChunks += text;
+    if (!reviewRafPending) {
+      reviewRafPending = true;
+      requestAnimationFrame(() => {
+        renderReviewReport();
+        reviewRafPending = false;
+      });
+    }
+  });
+}
+if (window.writemaster.onReviewDone) {
+  window.writemaster.onReviewDone(() => {
+    state.reviewReportMarkdown = state.reviewStreamChunks;
+    state.reviewStreaming = false;
+    document.getElementById('reviewStopBtn').classList.add('hidden');
+    renderReviewReport();
+    showToast('审阅报告生成完成');
+  });
+}
+if (window.writemaster.onReviewError) {
+  window.writemaster.onReviewError((err) => {
+    state.reviewStreaming = false;
+    document.getElementById('reviewStopBtn').classList.add('hidden');
+    showToast('审阅出错: ' + err);
+    renderReviewReport();
+  });
 }
 
 async function init() {
