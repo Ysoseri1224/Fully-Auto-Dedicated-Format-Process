@@ -505,7 +505,21 @@ function setupAutoUpdater() {
   autoUpdater.on('update-available', (info) => send('available', { version: info.version }));
   autoUpdater.on('update-not-available', () => send('not-available'));
   autoUpdater.on('download-progress', (p) => send('progress', { percent: Math.round(p.percent) }));
-  autoUpdater.on('update-downloaded', (info) => send('downloaded', { version: info.version }));
+  autoUpdater.on('update-downloaded', (info) => {
+    send('downloaded', { version: info.version });
+    const win = BrowserWindow.getAllWindows()[0];
+    if (!win) return;
+    dialog.showMessageBox(win, {
+      type: 'info',
+      title: '更新就绪',
+      message: `新版本 v${info.version} 已下载完成`,
+      detail: '立即重启以完成更新？',
+      buttons: ['立即重启', '稍后'],
+      defaultId: 0,
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.quitAndInstall(false, true);
+    });
+  });
   autoUpdater.on('error', (err) => send('error', { message: err?.message || String(err) }));
 
   autoUpdater.checkForUpdates().catch(() => {});

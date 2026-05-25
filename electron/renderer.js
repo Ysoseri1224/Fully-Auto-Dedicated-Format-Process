@@ -1168,27 +1168,44 @@ function bindEvents() {
   el.resetTask.addEventListener('click', resetTask);
   el.refreshMasters.addEventListener('click', refreshMasters);
 
-  el.aboutBtn.addEventListener('click', async () => {
-    const ver = await window.writemaster.getVersion();
-    window.alert(`WriteMaster v${ver}\n\n统一 DOCX 格式整理工作流工具\n\n功能：\n• Markdown / DOCX → 标准化 DOCX 输出\n• 母版结构提取与段落语义标注\n• 自动样式聚类与 Profile 配置\n• 编号解析、docDefaults 字体回退\n\n入口：CLI / Node bundle / Electron 桌面版\n\nGitHub: https://github.com/Ysoseri1224/Fully-Auto-Docx-Format-Process`);
+  el.aboutBtn.addEventListener('click', () => setActiveView('help-view'));
+
+  // --- Help view: version + update ---
+  const helpVersion = document.getElementById('helpVersion');
+  const helpVersionFooter = document.getElementById('helpVersionFooter');
+  const helpCheckBtn = document.getElementById('helpCheckBtn');
+  const helpUpdateStatus = document.getElementById('helpUpdateStatus');
+  const helpGithubLink = document.getElementById('helpGithubLink');
+
+  helpGithubLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.open('https://github.com/Ysoseri1224/Fully-Auto-Docx-Format-Process/issues', '_blank');
   });
 
-  // --- Auto-update status ---
   window.writemaster.getVersion().then(ver => {
-    el.aboutBtn.title = `关于 WriteMaster v${ver}`;
+    helpVersion.textContent = `v${ver}`;
+    helpVersionFooter.textContent = `v${ver}`;
+    el.aboutBtn.title = `帮助 — WriteMaster v${ver}`;
   });
+
+  helpCheckBtn.addEventListener('click', () => {
+    helpUpdateStatus.textContent = '正在检查...';
+    window.writemaster.checkUpdate();
+  });
+
   window.writemaster.onUpdateStatus((status) => {
-    if (status.type === 'available') {
-      el.aboutBtn.textContent = 'i!';
-      el.aboutBtn.title = `新版本 v${status.version} 可用，正在下载...`;
+    if (status.type === 'checking') {
+      helpUpdateStatus.textContent = '正在检查...';
+    } else if (status.type === 'available') {
+      helpUpdateStatus.textContent = `发现新版本 v${status.version}，正在下载...`;
+    } else if (status.type === 'progress') {
+      helpUpdateStatus.textContent = `下载中 ${status.percent}%`;
+    } else if (status.type === 'not-available') {
+      helpUpdateStatus.textContent = '已是最新版本';
     } else if (status.type === 'downloaded') {
-      el.aboutBtn.textContent = 'i!';
-      el.aboutBtn.title = `v${status.version} 已下载，点击查看`;
-      el.aboutBtn.onclick = () => {
-        if (window.confirm(`新版本 v${status.version} 已下载完成。\n\n立即重启并安装更新？`)) {
-          window.writemaster.installUpdate();
-        }
-      };
+      helpUpdateStatus.textContent = `v${status.version} 已下载，等待重启安装`;
+    } else if (status.type === 'error') {
+      helpUpdateStatus.textContent = '检查更新失败';
     }
   });
 

@@ -462,6 +462,10 @@
             <div class="nav-title">文稿审阅</div>
             <div class="nav-sub">AI 辅助学术文稿审阅</div>
           </div>
+          <div class="nav-item" data-view-target="help-view">
+            <div class="nav-title">帮助</div>
+            <div class="nav-sub">检查更新、使用说明、关于</div>
+          </div>
         </div>
 
         <div>
@@ -497,6 +501,7 @@
             <button class="tab" data-view-target="template-view">模板提取</button>
             <button class="tab" data-view-target="config-view">Profile 配置</button>
             <button class="tab" data-view-target="review-view">文稿审阅</button>
+            <button class="tab" data-view-target="help-view">帮助</button>
           </div>
           <div class="tag" id="toolbarMasterTag">当前母版：review-master</div>
           <button class="button secondary" id="importOtherTemplate" style="display:none;font-size:12px;padding:5px 12px;">导入其他文件作为模板</button>
@@ -752,6 +757,40 @@
                   <div id="reviewReportPage">
                     <div class="muted" style="padding:40px;text-align:center;">尚未生成审阅报告。配置 AI 后点击「开始审阅」。</div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="view" id="help-view">
+            <div style="max-width:680px;margin:0 auto;padding:32px 24px;">
+              <h2 style="margin:0 0 24px;font-size:18px;font-weight:600;">帮助</h2>
+
+              <div style="margin-bottom:28px;">
+                <h3 style="font-size:14px;font-weight:600;margin:0 0 12px;">检查更新</h3>
+                <p style="margin:0 0 8px;font-size:13px;color:#555;">当前版本：<strong id="helpVersion">-</strong></p>
+                <button class="button secondary" id="helpCheckBtn" style="font-size:12px;padding:5px 14px;">检查更新</button>
+                <span id="helpUpdateStatus" style="margin-left:12px;font-size:12px;color:#888;"></span>
+              </div>
+
+              <div style="margin-bottom:28px;">
+                <h3 style="font-size:14px;font-weight:600;margin:0 0 12px;">使用说明</h3>
+                <div style="font-size:13px;line-height:1.8;color:#444;">
+                  <p style="margin:0 0 8px;"><strong>应用任务</strong> — 选择 Markdown 或 DOCX 文件，指定母版，一键生成标准化输出。支持内置母版和自定义外部母版。</p>
+                  <p style="margin:0 0 8px;"><strong>模板提取</strong> — 上传母版 DOCX，解析段落结构，右键标注语义角色（标题/正文/图题等），自动聚类生成 Profile。</p>
+                  <p style="margin:0 0 8px;"><strong>Profile 配置</strong> — 管理已保存的样式映射配置，支持编辑、导入、导出 JSON。</p>
+                  <p style="margin:0 0 8px;"><strong>文稿审阅</strong> — 上传 .md/.docx 文稿，选择审阅技能（多选），AI 流式生成审阅报告，支持导出。</p>
+                  <p style="margin:0 0 8px;"><strong>内置母版</strong> — review-master（教材）、chapter10-monograph（专著）、graduate-thesis（毕业论文）。</p>
+                  <p style="margin:0 0 0;"><strong>CLI</strong> — <code>node src/cli.js --md file.md</code> 或 <code>--docx file.docx</code>，详见 README。</p>
+                </div>
+              </div>
+
+              <div>
+                <h3 style="font-size:14px;font-weight:600;margin:0 0 12px;">关于 / 反馈</h3>
+                <div style="font-size:13px;line-height:1.8;color:#444;">
+                  <p style="margin:0 0 4px;"><strong>WriteMaster</strong> — 统一 DOCX 格式整理 + AI 文稿审阅工作台</p>
+                  <p style="margin:0 0 4px;">版本：<span id="helpVersionFooter">-</span></p>
+                  <p style="margin:0;">反馈与 Issue：<a href="#" id="helpGithubLink" style="color:#0066cc;">GitHub</a></p>
                 </div>
               </div>
             </div>
