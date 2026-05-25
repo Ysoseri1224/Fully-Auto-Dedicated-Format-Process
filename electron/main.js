@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { app, BrowserWindow, dialog, ipcMain } = require('electron');
-const { autoUpdater } = require('electron-updater');
+let autoUpdater = null;
+try { autoUpdater = require('electron-updater').autoUpdater; } catch (_) {}
 const { buildFromMarkdown } = require('../src/core/build');
 const { processReview, listBuiltInMasters } = require('../src/core/review');
 const { buildOutputPath } = require('../src/cli');
@@ -485,11 +486,11 @@ ipcMain.handle('writemaster:review-save-report', async (_, content) => {
 ipcMain.handle('writemaster:get-version', () => app.getVersion());
 
 ipcMain.handle('writemaster:check-update', () => {
-  autoUpdater.checkForUpdates().catch(() => {});
+  if (autoUpdater) autoUpdater.checkForUpdates().catch(() => {});
 });
 
 ipcMain.handle('writemaster:install-update', () => {
-  autoUpdater.quitAndInstall(false, true);
+  if (autoUpdater) autoUpdater.quitAndInstall(false, true);
 });
 
 function setupAutoUpdater() {
@@ -527,7 +528,7 @@ function setupAutoUpdater() {
 
 app.whenReady().then(() => {
   createWindow();
-  setupAutoUpdater();
+  if (autoUpdater) setupAutoUpdater();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
